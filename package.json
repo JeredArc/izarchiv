@@ -1,0 +1,14 @@
+{
+  "name": "izarchiv",
+  "version": "1.0.0",
+  "description": "Program for storing measurement values with FTP upload interface for IZAR Center Memory",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.7",
+    "ftp-srv": "^4.6.3",
+    "bunyan": "^1.8.15"
+  }
+} 

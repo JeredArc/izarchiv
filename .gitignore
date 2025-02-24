@@ -1,0 +1,16 @@
+# Node
+node_modules/
+npm-debug.log
+*.log
+
+# Database
+*.db
+*.db3
+values.db3
+
+# Environment
+.env
+
+# OS
+.DS_Store
+Thumbs.db 
