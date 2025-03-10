@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Program for storing measurement values with FTP upload interface for IZAR Center Memory",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js"
   },

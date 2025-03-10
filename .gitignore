@@ -6,7 +6,6 @@ npm-debug.log
 # Database
 *.db
 *.db3
-values.db3
 
 # Environment
 .env

@@ -1,12 +1,13 @@
 # IZAR Archive
 
 Program for storing measurement values with FTP upload interface for IZAR Center Memory.
+(C) 2020-2022 Architekt Krizmanics ZT GmbH, Umsetzung durch Gerhard Pfister
+Based on IZAR MBus Decoder (C) 2020-2022 Architekt Krizmanics ZT GmbH
 
 ## Features
-- FTP server interface for receiving measurement data from IZAR Center Memory
 - Stores files in SQLite database
+- FTP server interface for receiving measurement data from IZAR Center Memory
 - Handles .rdy files for marking uploads as ready
-- File size limit of 50MB
 
 ## Setup
 1. Clone the repository
