@@ -1,6 +1,6 @@
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
-	console.log('IZAR Archive frontend loaded');
+	console.log('IZARchiv frontend loaded');
 	
 	// Format dates
 	formatDates();
