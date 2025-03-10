@@ -16,11 +16,19 @@ export const mbusTimezoneOffset = 60; /* UTC + minutes */
 export const saveUploadsInFilesystem = false;
 export const uploadDirPath = "./uploads";
 
+/* Web server configuration */
+export const webserver = {
+	enabled: true,
+	port: 3000,
+	host: '0.0.0.0'
+};
+
 export default {
-    dbfile,
-    ftpconfig,
-    mbusTimezoneOffset,
-    saveUploadsInFilesystem,
-    uploadDirPath
+	dbfile,
+	ftpconfig,
+	mbusTimezoneOffset,
+	saveUploadsInFilesystem,
+	uploadDirPath,
+	webserver
 };
 

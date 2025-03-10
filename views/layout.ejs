@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>IZAR Archive</title>
+	<link rel="stylesheet" href="/public/styles.css">
+	<script src="/public/app.js" defer></script>
+</head>
+<body>
+	<header>
+		<div class="container">
+			<h1>IZAR Archive</h1>
+			<nav>
+				<ul>
+					<li><a href="/">Dashboard</a></li>
+					<li><a href="/records">Records</a></li>
+				</ul>
+			</nav>
+		</div>
+	</header>
+	
+	<main class="container">
+		<%- body %>
+	</main>
+	
+	<footer>
+		<div class="container">
+			<p>&copy; <%= new Date().getFullYear() %> IZAR Archive</p>
+		</div>
+	</footer>
+</body>
+</html> 
