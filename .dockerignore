@@ -15,4 +15,11 @@ uploads/
 
 # OS
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Development
+.git/
+.github/
+.vscode/
+test/
+tests/ 

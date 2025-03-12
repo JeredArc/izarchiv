@@ -4,7 +4,10 @@ import FastifyView from '@fastify/view';
 import FastifyFormbody from '@fastify/formbody';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { initDatabase, getRecords, getRecordsByField } from './db.js';
+import { getRecord, getRecords, getDevices, getDevice, getSources, getSource } from './db.js';
+import { webserver, defaultLocale, defaultUiDateFormat, defaultDeselectedColumns, customColumnAdders, columnGetters, columnLinks } from './settings.js';
+import { formatDate } from './utils.js';
+import ejs from 'ejs';
 
 // Convert ESM __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -21,62 +24,174 @@ fastify.register(FastifyStatic, {
 	root: path.join(__dirname, 'public'),
 	prefix: '/public/'
 });
+
 fastify.register(FastifyView, {
 	engine: {
-		ejs: await import('ejs')
+		ejs
 	},
 	root: path.join(__dirname, 'views'),
+	defaultContext: {
+		// Global template variables
+		title: 'IZARchiv',
+		path: '/',
+		formatDate,
+		defaultUiDateFormat,
+		defaultLocale
+	},
+	layout: './layout',
 	viewExt: 'ejs'
 });
 
-// Initialize database connection
 let db;
 
-// Routes
+/* dashboard routes */
 fastify.get('/', async (request, reply) => {
-	const records = await getRecords(db, 20);
-	return reply.view('index', { records });
+	const { records, total } = await getRecords(db, 20);
+	return reply.view('index', { records, total, path: '/' });
 });
 
+/* devices routes */
+fastify.get('/devices', async (request, reply) => {
+	const page = parseInt(request.query.page) || 1;
+	const limit = parseInt(request.query.limit) || 100;
+	const offset = (page - 1) * limit;
+	
+	const { devices, total } = await getDevices(db, limit, offset);
+	const totalPages = Math.ceil(total / limit);
+	
+	return reply.view('devices', { 
+		devices,
+		pagination: {
+			currentPage: page,
+			totalPages,
+			limit,
+			total
+		},
+		path: '/devices'
+	});
+});
+
+fastify.get('/device/:id', async (request, reply) => {
+	const { id } = request.params;
+	const device = await getDevice(db, id);
+	if (!device) {
+		return reply.code(404).send({ error: 'Device not found' });
+	}
+	return reply.view('device-detail', { device, path: '/devices' });
+});
+
+/* sources routes */
+fastify.get('/sources', async (request, reply) => {
+	const page = parseInt(request.query.page) || 1;
+	const limit = parseInt(request.query.limit) || 100;
+	const offset = (page - 1) * limit;
+	
+	const { sources, total } = await getSources(db, limit, offset);
+	const totalPages = Math.ceil(total / limit);
+	
+	return reply.view('sources', { 
+		sources,
+		pagination: {
+			currentPage: page,
+			totalPages,
+			limit,
+			total
+		},
+		path: '/sources'
+	});
+});
+
+fastify.get('/source/:id', async (request, reply) => {
+	const { id } = request.params;
+	const source = await getSource(db, id);
+	if (!source) {
+		return reply.code(404).send({ error: 'Source not found' });
+	}
+	return reply.view('source-detail', { source, path: '/sources' });
+});
+
+/* records routes */
 fastify.get('/records', async (request, reply) => {
+	const page = parseInt(request.query.page) || 1;
 	const limit = parseInt(request.query.limit) || 100;
-	const records = await getRecords(db, limit);
-	return reply.view('records', { records });
+	const offset = (page - 1) * limit;
+	
+	// Get records first to determine available columns
+	const { records, total } = await getRecords(db, limit, offset);
+	
+	// Collect all unique keys from data fields
+	const dataColumns = new Set();
+	records.forEach(record => {
+		if (record.data && typeof record.data === 'object') {
+			Object.keys(record.data).forEach(key => dataColumns.add(key));
+		}
+		if (record.delta && typeof record.delta === 'object') {
+			Object.keys(record.delta).forEach(key => dataColumns.add(key));
+		}
+	});
+	
+	// Base columns plus data field columns
+	let allColumns = ['time', 'device', 'source', 'data', 'delta', ...Array.from(dataColumns)];
+	customColumnAdders.forEach(fn => allColumns = fn(allColumns));
+	const defaultColumns = allColumns.filter(col => !defaultDeselectedColumns.includes(col));
+	let selectedColumns = [...defaultColumns];
+	
+	if (request.query.columns) {
+		const columnsParam = request.query.columns;
+		
+		if (columnsParam.startsWith('-')) {
+			// If starts with '-', remove specified columns from defaults
+			const columnsToRemove = columnsParam.substring(1).split(',');
+			selectedColumns = defaultColumns.filter(col => !columnsToRemove.includes(col));
+		} else {
+			// Otherwise, use only the specified columns
+			selectedColumns = columnsParam.split(',').filter(col => 
+				// Ensure we only include valid columns
+				allColumns.includes(col)
+			);
+		}
+	}
+	
+	const totalPages = Math.ceil(total / limit);
+	
+	return reply.view('records', { 
+		records,
+		pagination: {
+			currentPage: page,
+			totalPages,
+			limit,
+			total
+		},
+		columns: {
+			all: allColumns,
+			selected: selectedColumns,
+			defaultDeselected: defaultDeselectedColumns,
+		},
+		columnGetters,
+		columnLinks,
+		path: '/records'
+	});
 });
 
-fastify.get('/records/:id', async (request, reply) => {
+fastify.get('/record/:id', async (request, reply) => {
 	const { id } = request.params;
-	const records = await getRecordsByField(db, '$.id', id, 1);
-	if (records.length === 0) {
+	const record = await getRecord(db, id);
+	if (!record) {
 		return reply.code(404).send({ error: 'Record not found' });
 	}
-	return reply.view('record-detail', { record: records[0] });
+	return reply.view('record-detail', { record, path: '/records' });
 });
 
-fastify.get('/api/records', async (request, reply) => {
-	const limit = parseInt(request.query.limit) || 100;
-	const records = await getRecords(db, limit);
-	return { records };
-});
-
-fastify.get('/api/records/:id', async (request, reply) => {
-	const { id } = request.params;
-	const records = await getRecordsByField(db, '$.id', id, 1);
-	if (records.length === 0) {
-		return reply.code(404).send({ error: 'Record not found' });
-	}
-	return { record: records[0] };
-});
 
 // Start the server
-export async function startWebServer(config) {
-	// Initialize database
-	db = await initDatabase(config.dbFile);
+export async function startWebServer(database) {
+	// Store database connection
+	db = database;
 	
-	// Set server address and port
+	// Set server address and port from settings
 	await fastify.listen({ 
-		port: config.webPort || 3000, 
-		host: config.webHost || '0.0.0.0' 
+		port: webserver.port, 
+		host: webserver.host 
 	});
 	
 	console.log(`Web server running at ${fastify.server.address().address}:${fastify.server.address().port}`);

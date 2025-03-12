@@ -1,45 +1,38 @@
-<%- contentFor('body') %>
-
 <div class="dashboard">
-	<h2>Dashboard</h2>
+	<h2>Übersicht</h2>
 	
 	<div class="stats-cards">
 		<div class="card">
-			<h3>Recent Records</h3>
-			<p class="stat"><%= records.length %></p>
+			<h3>Messwerte Gesamt</h3>
+			<div class="stat"><%= total %></div>
 		</div>
 	</div>
-
-	<div class="recent-records">
-		<h3>Recent Measurements</h3>
-		<% if (records.length > 0) { %>
-			<table>
-				<thead>
-					<tr>
-						<th>ID</th>
-						<th>Time</th>
-						<th>Meter ID</th>
-						<th>Value</th>
-						<th>Unit</th>
-						<th>Source</th>
-					</tr>
-				</thead>
-				<tbody>
-					<% records.forEach(record => { %>
-						<tr>
-							<td><a href="/records/<%= record.data.id %>"><%= record.id %></a></td>
-							<td><%= new Date(record.time).toLocaleString() %></td>
-							<td><%= record.data.meterId || 'N/A' %></td>
-							<td><%= record.data.value || 'N/A' %></td>
-							<td><%= record.data.unit || 'N/A' %></td>
-							<td><%= record.filename %></td>
-						</tr>
-					<% }); %>
-				</tbody>
-			</table>
-			<p><a href="/records" class="btn">View All Records</a></p>
-		<% } else { %>
-			<p>No records found.</p>
-		<% } %>
-	</div>
+	
+	<h3>Aktuelle Messwerte</h3>
+	<table>
+		<thead>
+			<tr>
+				<th>#</th>
+				<th>Zeit</th>
+				<th>Gerät</th>
+				<th>Quelle</th>
+				<th>Werte</th>
+			</tr>
+		</thead>
+		<tbody>
+			<% records.forEach(record => { %>
+				<tr>
+					<td><a href="/record/<%= record.id %>"><%= record.id %></a></td>
+					<td class="timestamp"><%- formatDate(record.time, defaultUiDateFormat) %></td>
+					<td><a href="/device/<%= record.device %>"><%= record.deviceName %></a></td>
+					<td><a href="/source/<%= record.source %>"><%= record.sourceFilename || record.sourceType || 'Unbekannt' %></a></td>
+					<td><%= JSON.stringify(record.data) %></td>
+				</tr>
+			<% }); %>
+		</tbody>
+	</table>
+	
+	<p class="view-all">
+		<a href="/records">Alle Messwerte anzeigen →</a>
+	</p>
 </div> 

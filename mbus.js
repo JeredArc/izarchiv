@@ -1,4 +1,4 @@
-const settings = require("./settings");
+import { mbusTimezoneOffset, mbusTelTimeHeader } from "./settings.js";
 
 
 function toLetterNumerals(num) {
@@ -56,7 +56,7 @@ function parseMbusDate(data, datetime=true) {
 		hour:   shiftStrip(data,  8, 5),
 		dst:  !!shiftStrip(data, 15, 1),
 	});
-	date.timestamp = Date.UTC(date.year, date.month - 1, date.day, date.hour ?? 0, date.min ?? 0) / 1000 - (date.dst ? 3600 : 0) - settings.mbusTimezoneOffset * 60;
+	date.timestamp = Date.UTC(date.year, date.month - 1, date.day, date.hour ?? 0, date.min ?? 0) / 1000 - (date.dst ? 3600 : 0) - mbusTimezoneOffset * 60;
 	date.str = `${String(date.day).padStart(2, "0")}.${String(date.month).padStart(2, "0")}.${String(date.year).padStart(4, "0")}`
 		+ (datetime ? ` ${String(date.hour).padStart(2, "0")}:${String(date.min).padStart(2, "0")}${date.dst ? " DST" : ""}` : "");
 	return date;
@@ -133,6 +133,7 @@ export function parseMbusTelegram(tel) {
 
 
 	/* The following parsing is based on the MBus-Documentation found at https://m-bus.com/assets/downloads/MBDOC48.PDF */
+	/* written by Gerhard Pfister, 2020 */
 
 
 	/* Start */
@@ -166,7 +167,6 @@ export function parseMbusTelegram(tel) {
 	/* Identification Number */
 	record.mbusId = next(4);
 	record.telUID[1] = record.mbusId;
-	record.deviceName = state.deviceNames[record.mbusId] ?? `<${record.mbusId}>`;
 
 	/* Manufacturer */
 	record.mbusManufacturer = parseMbusManufacturer(next(2));
@@ -364,7 +364,7 @@ export function parseMbusTelegram(tel) {
 			let getLongDurationUnit = (n) => durationUnits.slice(2)[n];
 			let getDateTimeFunc = (datetime=null) => (n) => ([data,, data_len, drh]) => {
 				let date = parseMbusDate(data, datetime ?? (data_len == 4));
-				if(drh == state.mbusTelTimeHeader) {
+				if(drh == mbusTelTimeHeader) {
 					record.telTimestr = date.str;
 					record.telTimestamp = date.timestamp;
 					record.telUID[0] = `${String(date.year).padStart(2, "0").slice(-2)}${String(date.month).padStart(2, "0")}${String(date.day).padStart(2, "0")}`
@@ -378,18 +378,14 @@ export function parseMbusTelegram(tel) {
 				/* [ RegEx search on binary rep of VIF, description of the value, multiplier, unit ]  Documentation p. 78 */
 				[ /^.0000(...)$/, "Energie",                             (n) => ({exp10: n-3 }),     "Wh"                ], /* Energy */
 				[ /^.0001(...)$/, "Energie",                             (n) => ({exp10: n }),       "J"                 ], /* Energy */
-			//	[ /^.0010(...)$/, "Volumen",                             (n) => ({exp10: n-6 }),     "m³"                ], /* Volume */
 				[ /^.0010(...)$/, "Volumen",                             (n) => ({exp10: n-3 }),     "l"                 ], /* Volume */
 				[ /^.0011(...)$/, "Masse",                               (n) => ({exp10: n-3 }),     "kg"                ], /* Mass */
 				[ /^.01000(..)$/, "On-Zeit",                             1,                          getDurationUnit     ], /* On Time */
 				[ /^.01001(..)$/, "Betriebszeit",                        1,                          getDurationUnit     ], /* Operating Time */
 				[ /^.0101(...)$/, "Leistung",                            (n) => ({exp10: n-3 }),     "W"                 ], /* Power */
 				[ /^.0110(...)$/, "Leistung",                            (n) => ({exp10: n }),       "J/h"               ], /* Power */
-			//	[ /^.0111(...)$/, "Volumens-Durchfluss",                 (n) => ({exp10: n-6 }),     "m³/h"              ], /* Volume Flow */
 				[ /^.0111(...)$/, "Volumens-Durchfluss",                 (n) => ({exp10: n-3 }),     "l/h"               ], /* Volume Flow */
-			//	[ /^.1000(...)$/, "Volumens-Durchfluss extern",          (n) => ({exp10: n-7 }),     "m³/min"            ], /* Volume Flow ext. */
 				[ /^.1000(...)$/, "Volumens-Durchfluss extern",          (n) => ({exp10: n-4 }),     "l/min"             ], /* Volume Flow ext. */
-			//	[ /^.1001(...)$/, "Volumens-Durchfluss extern",          (n) => ({exp10: n-9 }),     "m³/s"              ], /* Volume Flow ext. */
 				[ /^.1001(...)$/, "Volumens-Durchfluss extern",          (n) => ({exp10: n-6 }),     "l/s"               ], /* Volume Flow ext. */
 				[ /^.1010(...)$/, "Massen-Durchfluss",                   (n) => ({exp10: n-3 }),     "kg/h"              ], /* Mass flow */
 				[ /^.10110(..)$/, "Vorlauftemperatur",                   (n) => ({exp10: n-3 }),     "°C"                ], /* Flow Temperature */
@@ -545,7 +541,7 @@ export function parseMbusTelegram(tel) {
 	record.telUID = record.telUID.join("-");
 
 	/* Stop */
-	if(next() != "16") throw {msg: `Unerwartetes Stop-Byte <${currentBytes}>, <16> erwartet!`, record};
+	if(next() != "16") throw { msg: `Unerwartetes Stop-Byte <${currentBytes}>, <16> erwartet!`, record };
 
 
 	if(nextIndex != bytes.length) warn(`Unerwartet noch ${bytes.length - nextIndex} Bytes nach dem Stop-Bit!`);
@@ -572,10 +568,10 @@ export function parseIzarXml(xmlContents) {
 		catch(error) {
 			(result.errors ??= []).push({
 				telIndex,
-				telUID: error.result?.telUID,
+				telUID: error.record?.telUID,
 				mbusTel,
 				error: error.msg || error.toString(),
-				warnings: error.result?.warnings
+				warnings: error.record?.warnings
 			});
 		}
 	}

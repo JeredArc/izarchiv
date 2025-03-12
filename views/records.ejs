@@ -1,34 +1,156 @@
-<%- contentFor('body') %>
-
+<%
+// Translation dictionary for column names
+const columnTranslations = {
+	'time': 'Zeit',
+	'device': 'Gerät',
+	'source': 'Quelle',
+	'data': 'Werte'
+};
+%>
 <div class="records-page">
-	<h2>All Records</h2>
+	<h2>Messwerte</h2>
 	
-	<% if (records.length > 0) { %>
-		<table class="records-table">
-			<thead>
-				<tr>
-					<th>ID</th>
-					<th>Time</th>
-					<th>Meter ID</th>
-					<th>Value</th>
-					<th>Unit</th>
-					<th>Source</th>
-				</tr>
-			</thead>
-			<tbody>
-				<% records.forEach(record => { %>
-					<tr>
-						<td><a href="/records/<%= record.data.id %>"><%= record.id %></a></td>
-						<td><%= new Date(record.time).toLocaleString() %></td>
-						<td><%= record.data.meterId || 'N/A' %></td>
-						<td><%= record.data.value || 'N/A' %></td>
-						<td><%= record.data.unit || 'N/A' %></td>
-						<td><%= record.filename %></td>
-					</tr>
+	<div class="records-info">
+		<p>Zeige <%= records.length %> von <%= pagination.total %> Messwerten</p>
+	</div>
+	
+	<!-- Column Selection UI -->
+	<div class="column-selection">
+		<h3>Spaltenauswahl</h3>
+		<form action="/records" method="GET">
+			<!-- Preserve existing query parameters -->
+			<input type="hidden" name="page" value="<%= pagination.currentPage %>">
+			<input type="hidden" name="limit" value="<%= pagination.limit %>">
+			
+			<div class="column-checkboxes">
+				<% columns.all.forEach(column => { %>
+					<div class="column-checkbox">
+						<input 
+							type="checkbox" 
+							id="col-<%= column %>" 
+							<%= columns.defaultDeselected.includes(column) ? 'data-default-deselected="true"' : '' %>
+							<%= columns.selected.includes(column) ? 'checked' : '' %>
+						>
+						<label for="col-<%= column %>"><%= columnTranslations[column] || column %></label>
+					</div>
 				<% }); %>
-			</tbody>
-		</table>
-	<% } else { %>
-		<p>No records found.</p>
+			</div>
+			
+			<input type="hidden" name="columns" id="columns-param" value="">
+			<button type="submit">Anwenden</button>
+		</form>
+	</div>
+	
+	<table>
+		<thead>
+			<tr>
+				<!-- ID column is always displayed -->
+				<th>#</th>
+				<!-- Dynamic columns -->
+				<% columns.selected.forEach(column => { %>
+					<th><%= columnTranslations[column] || column %></th>
+				<% }); %>
+			</tr>
+		</thead>
+		<tbody>
+			<% records.forEach(record => { %>
+				<tr>
+					<!-- ID column is always displayed -->
+					<td><a href="/record/<%= record.id %>"><%= record.id %></a></td>
+					<!-- Dynamic columns -->
+					<% columns.selected.forEach(column => {
+						let unknown = false;
+						let value =
+							column in columnGetters ? columnGetters[column](record)
+							: column in record ? record[column]
+							: record.delta && column in record.delta ? record.delta[column]
+							: record.data && column in record.data ? record.data[column]
+							: (unknown = true);
+						%>
+						<% if (unknown) { %>
+							<td class="unknown">-</td>
+						<% } else if (column in columnLinks) { %>
+							<td><a href="<%= columnLinks[column](record) %>"><%= value %></a></td>
+						<% } else if (typeof value === 'number') { %>
+							<td class="number"><%= value.toLocaleString(defaultLocale) %></td>
+						<% } else { %>
+							<td><%= value %></td>
+						<% } %>
+					<% }); %>
+				</tr>
+			<% }); %>
+		</tbody>
+	</table>
+
+	<% if (pagination.totalPages > 1) { %>
+		<div class="pagination">
+			<% if (pagination.currentPage > 1) { %>
+				<a href="/records?page=1<%= getColumnQueryParam() %>" class="pagination-link">&laquo;</a>
+				<a href="/records?page=<%= pagination.currentPage - 1 %><%= getColumnQueryParam() %>" class="pagination-link">&lsaquo;</a>
+			<% } %>
+			
+			<% for (let i = Math.max(1, pagination.currentPage - 2); i <= Math.min(pagination.totalPages, pagination.currentPage + 2); i++) { %>
+				<a href="/records?page=<%= i %><%= getColumnQueryParam() %>" class="pagination-link <%= i === pagination.currentPage ? 'active' : '' %>"><%= i %></a>
+			<% } %>
+			
+			<% if (pagination.currentPage < pagination.totalPages) { %>
+				<a href="/records?page=<%= pagination.currentPage + 1 %><%= getColumnQueryParam() %>" class="pagination-link">&rsaquo;</a>
+				<a href="/records?page=<%= pagination.totalPages %><%= getColumnQueryParam() %>" class="pagination-link">&raquo;</a>
+			<% } %>
+		</div>
 	<% } %>
-</div> 
+</div>
+
+<script>
+	// Helper function to update column selection
+	function updateColumnSelection(checkbox) {
+		const columnsParam = document.getElementById('columns-param');
+		const selectedColumns = [];
+		const deselectedColumns = [];
+		let includesDefaultDeselected = false;
+		
+		// Collect all checked columns
+		document.querySelectorAll('.column-checkbox input').forEach(input => {
+			const columnName = input.id.replace('col-', '');
+			if(input.dataset.defaultDeselected && !input.checked) return;
+			if(input.dataset.defaultDeselected) includesDefaultDeselected = true;
+			(input.checked ? selectedColumns : deselectedColumns).push(columnName);
+		});
+		
+		// Determine if we should use the "-" prefix approach
+		if (!includesDefaultDeselected && deselectedColumns.length === 0) {
+			// All columns selected, no need for a parameter
+			columnsParam.value = '';
+		} else if (!includesDefaultDeselected && deselectedColumns.length < selectedColumns.length) {
+			// More columns selected than deselected, use "-" prefix for deselected
+			columnsParam.value = '-' + deselectedColumns.join(',');
+		} else {
+			// Fewer columns selected, just list the selected ones
+			columnsParam.value = selectedColumns.join(',');
+		}
+	}
+	
+	// Add event listener to the form to update the columns parameter before submission
+	document.querySelector('.column-selection form').addEventListener('submit', function(e) {
+		updateColumnSelection();
+	});
+</script>
+
+<% 
+// Helper function to generate column query parameter
+function getColumnQueryParam() {
+	// If all columns are selected, return empty string (default behavior)
+	if (columns.selected.length === columns.all.length) {
+		return '';
+	}
+	
+	// If more columns are selected than deselected, use "-" prefix
+	if (columns.selected.length > columns.all.length / 2) {
+		const deselectedColumns = columns.all.filter(col => !columns.selected.includes(col));
+		return '&columns=-' + deselectedColumns.join(',');
+	} 
+	
+	// Otherwise, just list the selected columns
+	return '&columns=' + columns.selected.join(',');
+}
+%> 

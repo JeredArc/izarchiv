@@ -1,0 +1,50 @@
+<div class="sources-page">
+	<h2>Quellen</h2>
+	
+	<div class="records-info">
+		<p>Zeige <%= sources.length %> von <%= pagination.total %> Quellen</p>
+	</div>
+	
+	<table>
+		<thead>
+			<tr>
+				<th>#</th>
+				<th>Zeit</th>
+				<th>Typ</th>
+				<th>Dateiname</th>
+				<th>Als fertig (rdy) markiert</th>
+				<th>Messwerte</th>
+			</tr>
+		</thead>
+		<tbody>
+			<% sources.forEach(source => { %>
+				<tr>
+					<td><a href="/source/<%= source.id %>"><%= source.id %></a></td>
+					<td class="timestamp"><%- formatDate(source.created_at, defaultUiDateFormat) %></td>
+					<td><%= source.type %></td>
+					<td><%= source.filename %></td>
+					<td><%= source.rdysent ? '✓' : '✗' %></td>
+					<td><%= source.recordCount %></td>
+				</tr>
+			<% }); %>
+		</tbody>
+	</table>
+
+	<% if (pagination.totalPages > 1) { %>
+		<div class="pagination">
+			<% if (pagination.currentPage > 1) { %>
+				<a href="/sources?page=1" class="pagination-link">&laquo;</a>
+				<a href="/sources?page=<%= pagination.currentPage - 1 %>" class="pagination-link">&lsaquo;</a>
+			<% } %>
+			
+			<% for (let i = Math.max(1, pagination.currentPage - 2); i <= Math.min(pagination.totalPages, pagination.currentPage + 2); i++) { %>
+				<a href="/sources?page=<%= i %>" class="pagination-link <%= i === pagination.currentPage ? 'active' : '' %>"><%= i %></a>
+			<% } %>
+			
+			<% if (pagination.currentPage < pagination.totalPages) { %>
+				<a href="/sources?page=<%= pagination.currentPage + 1 %>" class="pagination-link">&rsaquo;</a>
+				<a href="/sources?page=<%= pagination.totalPages %>" class="pagination-link">&raquo;</a>
+			<% } %>
+		</div>
+	<% } %>
+</div> 

@@ -1,0 +1,72 @@
+<div class="source-detail">
+	<h2>Quelle Details</h2>
+	
+	<div class="source-card">
+		<div class="source-header">
+			<h3>Quelle #<%= source.id %></h3>
+			<span class="timestamp"><%- formatDate(source.created_at, defaultUiDateFormat) %></span>
+		</div>
+		
+		<div class="source-body">
+			<div class="info-section">
+				<h4>Quelleninformationen</h4>
+				<div class="info-row">
+					<label>Name:</label>
+					<span><%= source.name %></span>
+				</div>
+				<div class="info-row">
+					<label>Typ:</label>
+					<span><%= source.type %></span>
+				</div>
+				<div class="info-row">
+					<label>Status:</label>
+					<span><%= source.active ? 'Aktiv' : 'Inaktiv' %></span>
+				</div>
+				<div class="info-row">
+					<label>Erstellt am:</label>
+					<span><%- formatDate(source.created_at, defaultUiDateFormat) %></span>
+				</div>
+				<div class="info-row">
+					<label>Letzte Aktualisierung:</label>
+					<span><%- formatDate(source.updated_at, defaultUiDateFormat) %></span>
+				</div>
+				<div class="info-row">
+					<label>Konfiguration:</label>
+					<pre><%= JSON.stringify(source.config, null, 2) %></pre>
+				</div>
+			</div>
+			
+			<div class="records-section">
+				<h4>Letzte Messwerte</h4>
+				<% if (source.records && source.records.length > 0) { %>
+					<table>
+						<thead>
+							<tr>
+								<th>#</th>
+								<th>Zeit</th>
+								<th>Gerät</th>
+								<th>Werte</th>
+							</tr>
+						</thead>
+						<tbody>
+							<% source.records.forEach(record => { %>
+								<tr>
+									<td><a href="/record/<%= record.id %>"><%= record.id %></a></td>
+									<td class="timestamp"><%- formatDate(record.time, defaultUiDateFormat) %></td>
+									<td><a href="/device/<%= record.device %>"><%= record.deviceName || record.data.deviceName || record.data.mbusId || 'Unbekannt' %></a></td>
+									<td><%= JSON.stringify(record.data) %></td>
+								</tr>
+							<% }); %>
+						</tbody>
+					</table>
+				<% } else { %>
+					<p>Keine Datensätze gefunden in dieser Quelle.</p>
+				<% } %>
+			</div>
+		</div>
+	</div>
+	
+	<div class="actions">
+		<a href="/sources" class="btn">← Zurück zur Quellenübersicht</a>
+	</div>
+</div> 

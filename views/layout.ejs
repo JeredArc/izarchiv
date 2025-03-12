@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,8 +13,10 @@
 			<h1>IZARchiv</h1>
 			<nav>
 				<ul>
-					<li><a href="/">Dashboard</a></li>
-					<li><a href="/records">Records</a></li>
+					<li><a href="/" class="<%= path === '/' ? 'active' : '' %>">Übersicht</a></li>
+					<li><a href="/records" class="<%= path === '/records' ? 'active' : '' %>">Messwerte</a></li>
+					<li><a href="/devices" class="<%= path === '/devices' ? 'active' : '' %>">Geräte</a></li>
+					<li><a href="/sources" class="<%= path === '/sources' ? 'active' : '' %>">Quellen</a></li>
 				</ul>
 			</nav>
 		</div>
@@ -26,7 +28,7 @@
 	
 	<footer>
 		<div class="container">
-			<p>&copy; <%= new Date().getFullYear() %> IZARchiv</p>
+			<p>IZARchiv &copy; 2024-<%= new Date().getFullYear() %> Architekt Krizmanics ZT GmbH / Gerhard Pfister</p>
 		</div>
 	</footer>
 </body>

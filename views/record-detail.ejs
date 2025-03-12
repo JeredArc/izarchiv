@@ -1,43 +1,41 @@
-<%- contentFor('body') %>
-
 <div class="record-detail">
-	<h2>Record Details</h2>
+	<h2>Messwert Details</h2>
 	
 	<div class="record-card">
-	  <div class="record-header">
-	    <h3>Record #<%= record.id %></h3>
-	    <span class="timestamp"><%= new Date(record.time).toLocaleString() %></span>
-	  </div>
-	  
-	  <div class="record-body">
-	    <div class="record-field">
-	      <label>Meter ID:</label>
-	      <span><%= record.data.meterId || 'N/A' %></span>
-	    </div>
-	    
-	    <div class="record-field">
-	      <label>Value:</label>
-	      <span><%= record.data.value || 'N/A' %> <%= record.data.unit || '' %></span>
-	    </div>
-	    
-	    <div class="record-field">
-	      <label>Source File:</label>
-	      <span><%= record.filename %></span>
-	    </div>
-	    
-	    <div class="record-field">
-	      <label>Source Type:</label>
-	      <span><%= record.type %></span>
-	    </div>
-	    
-	    <div class="record-field">
-	      <label>Raw Data:</label>
-	      <pre class="json-data"><%= JSON.stringify(record.data, null, 2) %></pre>
-	    </div>
-	  </div>
+		<div class="record-header">
+			<h3>Record #<%= record.id %></h3>
+			<span class="timestamp"><%- formatDate(record.time, defaultUiDateFormat) %></span>
+		</div>
+		
+		<div class="record-body">
+			<div class="record-field">
+				<label>Meter ID:</label>
+				<span><%= record.data.meterId || 'N/A' %></span>
+			</div>
+			
+			<div class="record-field">
+				<label>Value:</label>
+				<span><%= record.data.value || 'N/A' %> <%= record.data.unit || '' %></span>
+			</div>
+			
+			<div class="record-field">
+				<label>Source File:</label>
+				<span><%= record.filename %></span>
+			</div>
+			
+			<div class="record-field">
+				<label>Source Type:</label>
+				<span><%= record.type %></span>
+			</div>
+			
+			<div class="record-field">
+				<label>Raw Data:</label>
+				<pre class="json-data"><%= JSON.stringify(record.data, null, 2) %></pre>
+			</div>
+		</div>
 	</div>
 	
 	<div class="actions">
-	  <a href="/records" class="btn">Back to Records</a>
+		<a href="/records" class="back-link">← Zurück zur Übersicht</a>
 	</div>
 </div> 

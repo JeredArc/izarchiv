@@ -1,0 +1,64 @@
+<div class="device-detail">
+	<h2>Gerät Details</h2>
+	
+	<div class="device-card">
+		<div class="device-header">
+			<h3><%= device.name %></h3>
+			<span class="device-id">ID: <%= device.id %></span>
+		</div>
+		
+		<div class="device-body">
+			<div class="info-section">
+				<h4>Device Information</h4>
+				<div class="info-row">
+					<label>Address:</label>
+					<span><%= device.address || 'N/A' %></span>
+				</div>
+				<div class="info-row">
+					<label>Description:</label>
+					<span><%= device.description || 'No description' %></span>
+				</div>
+				<div class="info-row">
+					<label>Created:</label>
+					<span><%- formatDate(device.created_at, defaultUiDateFormat) %></span>
+				</div>
+				<div class="info-row">
+					<label>Total Records:</label>
+					<span><%= device.recordCount %></span>
+				</div>
+			</div>
+			
+			<div class="records-section">
+				<h4>Recent Records</h4>
+				<% if (device.recentRecords && device.recentRecords.length > 0) { %>
+					<table>
+						<thead>
+							<tr>
+								<th>#</th>
+								<th>Zeit</th>
+								<th>Quelle</th>
+								<th>Werte</th>
+							</tr>
+						</thead>
+						<tbody>
+							<% device.recentRecords.forEach(record => { %>
+								<tr>
+									<td><a href="/record/<%= record.id %>"><%= record.id %></a></td>
+									<td class="timestamp"><%- formatDate(record.time, defaultUiDateFormat) %></td>
+									<td><a href="/source/<%= record.source %>"><%= record.sourceFilename || record.sourceType || 'Unbekannt' %></a></td>
+									<td><%= JSON.stringify(record.data) %></td>
+								</tr>
+							<% }); %>
+						</tbody>
+					</table>
+				<% } else { %>
+					<p>No records found for this device.</p>
+				<% } %>
+			</div>
+		</div>
+	</div>
+	
+	<div class="actions">
+		<a href="/devices" class="btn">Back to Devices</a>
+	</div>
+</div> 
