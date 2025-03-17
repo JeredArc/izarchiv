@@ -3,10 +3,14 @@
 import { initDatabase } from './db.js';
 import createFtpServer from './ftpserver.js';
 import { startWebServer } from './webserver.js';
-import { dbfile, ftpconfig, webserver } from './settings.js';
+import { dbfile, ftpconfig } from './settings.js';
+import { checkSettings } from './utils.js';
 
 /* Start the application */
 async function startApp() {
+	/* Check settings */
+	if(!checkSettings()) process.exit(1);
+
 	/* create database and table */
 	const db = await initDatabase(dbfile);
 

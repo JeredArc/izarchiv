@@ -57,6 +57,8 @@ function parseMbusDate(data, datetime=true) {
 		dst:  !!shiftStrip(data, 15, 1),
 	});
 	date.timestamp = Date.UTC(date.year, date.month - 1, date.day, date.hour ?? 0, date.min ?? 0) / 1000 - (date.dst ? 3600 : 0) - mbusTimezoneOffset * 60;
+	// /* ignore dst, as JavaScript's Date constructor uses the corresponding timezone offset anyways */
+	// date.timestamp = new Date(date.year, date.month - 1, date.day, date.hour ?? 0, date.min ?? 0).getTime() / 1000;
 	date.str = `${String(date.day).padStart(2, "0")}.${String(date.month).padStart(2, "0")}.${String(date.year).padStart(4, "0")}`
 		+ (datetime ? ` ${String(date.hour).padStart(2, "0")}:${String(date.min).padStart(2, "0")}${date.dst ? " DST" : ""}` : "");
 	return date;

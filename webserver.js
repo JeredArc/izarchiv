@@ -5,8 +5,22 @@ import FastifyFormbody from '@fastify/formbody';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getRecord, getRecords, getDevices, getDevice, getSources, getSource } from './db.js';
-import { webserver, defaultLocale, defaultUiDateFormat, defaultDeselectedColumns, customColumnAdders, columnGetters, columnLinks } from './settings.js';
-import { formatDate } from './utils.js';
+import { 
+	webserver, 
+	defaultLocale, 
+	defaultUiDateFormat, 
+	colPreRecord,
+	colPreData,
+	colPreDelta,
+	colPreCustom,
+	recordColumns,
+	defaultDeselectedColumns, 
+	deltaColumns,
+	multipliedColumns,
+	filterOperators,
+} from './settings.js';
+import { columnCaption, operatorCaption } from './translations-german.js';
+import { formatDate, formatNumber } from './utils.js';
 import ejs from 'ejs';
 
 // Convert ESM __dirname
@@ -35,8 +49,18 @@ fastify.register(FastifyView, {
 		title: 'IZARchiv',
 		path: '/',
 		formatDate,
+		formatNumber,
 		defaultUiDateFormat,
-		defaultLocale
+		defaultLocale,
+		colPreRecord,
+		colPreData,
+		colPreDelta,
+		colPreCustom,
+		deltaColumns,
+		multipliedColumns,
+		filterOperators,
+		columnCaption,
+		operatorCaption,
 	},
 	layout: './layout',
 	viewExt: 'ejs'
@@ -110,45 +134,70 @@ fastify.get('/source/:id', async (request, reply) => {
 	return reply.view('source-detail', { source, path: '/sources' });
 });
 
+
 /* records routes */
 fastify.get('/records', async (request, reply) => {
 	const page = parseInt(request.query.page) || 1;
 	const limit = parseInt(request.query.limit) || 100;
 	const offset = (page - 1) * limit;
 	
-	// Get records first to determine available columns
-	const { records, total } = await getRecords(db, limit, offset);
+	/* Process filter parameters */
+	const filters = [];
+	if (request.query.filter_column && Array.isArray(request.query.filter_column)) {
+		const columns = request.query.filter_column;
+		const operators = request.query.filter_operator || [];
+		const values = request.query.filter_value || [];
+		
+		for (let i = 0; i < columns.length; i++) {
+			const column = columns[i];
+			const operator = operators[i] || 'eq';
+			const value = values[i];
+			
+			/* Only add filter if column and value are provided */
+			if (column && value !== undefined && value !== '') {
+				filters.push({
+					column,
+					operator,
+					value
+				});
+			}
+		}
+	}
 	
-	// Collect all unique keys from data fields
-	const dataColumns = new Set();
+	/* Get records first to determine available columns */
+	const { records, total } = await getRecords(db, limit, offset, filters);
+	
+	/* Collect all unique keys from data and delta fields with appropriate prefixes */
+	const availDataColumns = new Set();
+	const availDeltaColumns = new Set();
+	const availCustomColumns = new Set();
 	records.forEach(record => {
-		if (record.data && typeof record.data === 'object') {
-			Object.keys(record.data).forEach(key => dataColumns.add(key));
-		}
-		if (record.delta && typeof record.delta === 'object') {
-			Object.keys(record.delta).forEach(key => dataColumns.add(key));
-		}
+		record.dataColumnNames.forEach(key => availDataColumns.add(key));
+		record.deltaColumnNames.forEach(key => availDeltaColumns.add(key));
+		record.customColumnNames.forEach(key => availCustomColumns.add(key));
 	});
 	
-	// Base columns plus data field columns
-	let allColumns = ['time', 'device', 'source', 'data', 'delta', ...Array.from(dataColumns)];
-	customColumnAdders.forEach(fn => allColumns = fn(allColumns));
-	const defaultColumns = allColumns.filter(col => !defaultDeselectedColumns.includes(col));
-	let selectedColumns = [...defaultColumns];
+	/* Base columns with record prefix plus data and delta field columns */
+	let allColumns = [
+		...recordColumns.map(col => colPreRecord + col),
+		...Array.from(availDataColumns),
+		...Array.from(availDeltaColumns)
+	];
+	for(let customColumn of availCustomColumns) { /* Insert custom columns after their source columns */
+		allColumns.splice(allColumns.indexOf(multipliedColumns[customColumn][0]) + 1, 0, customColumn);
+	}
+	
+	let selectedColumns = allColumns.filter(col => !defaultDeselectedColumns.includes(col));
 	
 	if (request.query.columns) {
 		const columnsParam = request.query.columns;
 		
+		/* If starts with '-', remove specified columns from defaults */
 		if (columnsParam.startsWith('-')) {
-			// If starts with '-', remove specified columns from defaults
 			const columnsToRemove = columnsParam.substring(1).split(',');
-			selectedColumns = defaultColumns.filter(col => !columnsToRemove.includes(col));
-		} else {
-			// Otherwise, use only the specified columns
-			selectedColumns = columnsParam.split(',').filter(col => 
-				// Ensure we only include valid columns
-				allColumns.includes(col)
-			);
+			selectedColumns = selectedColumns.filter(col => !columnsToRemove.includes(col));
+		} else { /* Otherwise, use only the specified columns */
+			selectedColumns = columnsParam.split(',').filter(col => allColumns.includes(col));
 		}
 	}
 	
@@ -167,8 +216,7 @@ fastify.get('/records', async (request, reply) => {
 			selected: selectedColumns,
 			defaultDeselected: defaultDeselectedColumns,
 		},
-		columnGetters,
-		columnLinks,
+		filters,
 		path: '/records'
 	});
 });
@@ -179,16 +227,20 @@ fastify.get('/record/:id', async (request, reply) => {
 	if (!record) {
 		return reply.code(404).send({ error: 'Record not found' });
 	}
-	return reply.view('record-detail', { record, path: '/records' });
+	
+	return reply.view('record-detail', { 
+		record, 
+		path: '/records'
+	});
 });
 
 
-// Start the server
+/* Start the server */
 export async function startWebServer(database) {
-	// Store database connection
+	/* Store database connection */
 	db = database;
 	
-	// Set server address and port from settings
+	/* Set server address and port from settings */
 	await fastify.listen({ 
 		port: webserver.port, 
 		host: webserver.host 

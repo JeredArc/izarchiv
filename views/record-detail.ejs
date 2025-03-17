@@ -1,41 +1,191 @@
 <div class="record-detail">
-	<h2>Messwert Details</h2>
+	<h2>Messwert Details #<%= record.id %></h2>
 	
-	<div class="record-card">
-		<div class="record-header">
-			<h3>Record #<%= record.id %></h3>
-			<span class="timestamp"><%- formatDate(record.time, defaultUiDateFormat) %></span>
+	<!-- Overview Section -->
+	<div class="record-section">
+		<h3>Übersicht</h3>
+		<div class="record-meta">
+			
+			<% [
+				colPreRecord + 'time', colPreRecord + 'deviceName', colPreRecord + 'sourceName',
+				...record.deviceOverviewColumns
+			].forEach(column => { 
+				let { value, link, classes } = record.columnOutput(column);
+				%>
+				<div class="meta-item">
+					<span class="meta-label"><%= columnCaption(column) %>:</span>
+					<span class="meta-value <%= classes.join(' ') %>">
+						<% if (link) { %>
+							<a href="<%= link %>"><%= value %></a>
+						<% } else { %>
+							<%= value %>
+						<% } %>
+					</span>
+				</div>
+			<% }); %>
 		</div>
-		
-		<div class="record-body">
-			<div class="record-field">
-				<label>Meter ID:</label>
-				<span><%= record.data.meterId || 'N/A' %></span>
-			</div>
-			
-			<div class="record-field">
-				<label>Value:</label>
-				<span><%= record.data.value || 'N/A' %> <%= record.data.unit || '' %></span>
-			</div>
-			
-			<div class="record-field">
-				<label>Source File:</label>
-				<span><%= record.filename %></span>
-			</div>
-			
-			<div class="record-field">
-				<label>Source Type:</label>
-				<span><%= record.type %></span>
-			</div>
-			
-			<div class="record-field">
-				<label>Raw Data:</label>
-				<pre class="json-data"><%= JSON.stringify(record.data, null, 2) %></pre>
-			</div>
+	</div>
+	
+	<!-- Data Values Section -->
+	<div class="record-section collapsible">
+		<h3>Messwerte</h3>
+		<div class="collapsible-content">
+			<table class="record-data">
+				<thead>
+					<tr>
+						<th>Feld</th>
+						<th>Wert</th>
+					</tr>
+				</thead>
+				<tbody>
+					<% if (record.hasDataColumns) { %>
+						<% record.dataColumnNames.forEach(column => {
+							let { value, link, classes } = record.columnOutput(column);
+							%>
+							<tr>
+								<td><%= columnCaption(column) %></td>
+								<td class="<%= classes.join(' ') %>">
+									<% if (link) { %>
+										<a href="<%= link %>"><%= value %></a>
+									<% } else { %>
+										<%= value %>
+									<% } %>
+								</td>		
+							</tr>
+						<% }); %>
+					<% } else { %>
+						<tr>
+							<td colspan="2" class="no-data">Keine Messwerte vorhanden</td>
+						</tr>
+					<% } %>
+				</tbody>
+			</table>
+		</div>
+	</div>
+	
+	<!-- Delta Values Section -->
+	<div class="record-section collapsible">
+		<h3>Änderungswerte</h3>
+		<div class="collapsible-content">
+			<% if (record.hasDeltaColumns) { %>
+				<table class="record-delta">
+					<thead>
+						<tr>
+							<th>Feld</th>
+							<th>Änderung pro Zeit</th>
+							<th>Vorherige #</th>
+							<th>Vorheriger Wert</th>
+							<th>Aktueller Wert</th>
+							<th>Wertdifferenz</th>
+							<th>Vorherige Zeit</th>
+							<th>Aktuelle Zeit</th>
+							<th>Zeitdifferenz</th>
+						</tr>
+					</thead>
+					<tbody>
+						<% record.deltaColumnNames.forEach(column => {
+							let { value, link, classes, raw } = record.columnOutput(column);
+							let deltaInfo = record.delta[column.substring(1)];
+							%>
+							<tr>
+								<td><%= columnCaption(column) %></td>
+								<td class="<%= classes.join(' ') %>">
+									<% if(typeof deltaInfo.ratePerSec === "number" && typeof raw === "number" && deltaInfo.ratePerSec !== raw) { %>
+										<%# Stored and just calculated values differ - showing both values %>
+										<%= formatNumber(deltaInfo.ratePerSec, column) %>
+										<span style="text-decoration: line-through"><%= value %></span>
+									<% } else { %>
+										<%= value %>
+									<% } %>
+								</td>
+								<% if (deltaInfo.prevId) { console.log("deltaInfo", deltaInfo); %>
+									<td>
+										<a href="/record/<%= deltaInfo.prevId %>">#<%= deltaInfo.prevId %></a>
+									</td>
+									<td>
+										<%= formatNumber(deltaInfo.prevValue, deltaColumns[column]) %>
+									</td>
+									<td>	
+										<%= formatNumber(deltaInfo.thisValue, deltaColumns[column]) %>
+									</td>
+									<td>
+										<%= formatNumber(deltaInfo.valueDiff, deltaColumns[column]) %>
+									</td>
+									<td>
+										<%= formatDate(deltaInfo.prevTime, defaultUiDateFormat) %>
+									</td>
+									<td>
+										<%= formatDate(deltaInfo.thisTime, defaultUiDateFormat) %>
+									</td>
+									<td>
+										<%= formatNumber(Math.round(deltaInfo.timeDiff / 1000)) %> s
+									</td>
+								<% } else { %>
+									<td>-</td>
+									<td>-</td>
+									<td>-</td>
+									<td>-</td>
+									<td>-</td>
+									<td>-</td>
+									<td>-</td>
+								<% } %>
+								</td>
+							</tr>
+						<% }); %>
+					</tbody>
+				</table>
+			<% } else { %>
+				<p class="no-data">Keine Differenzwerte vorhanden</p>
+			<% } %>
+		</div>
+	</div>
+
+	
+	<!-- Calculated Values Section -->
+	<div class="record-section collapsible">
+		<h3>Umgerechnete Einheiten</h3>
+		<div class="collapsible-content">
+			<% if (record.hasCustomColumns) { %>
+				<table class="record-calculated">
+					<thead>
+						<tr>
+							<th>Feld</th>
+							<th>Wert</th>
+						</tr>
+					</thead>
+					<tbody>
+						<% record.customColumnNames.forEach(column => {
+							let { value, link, classes } = record.columnOutput(column);
+							%>
+							<tr>
+								<td><%= columnCaption(column) %></td>
+								<td class="<%= classes.join(' ') %>">
+									<% if (link) { %>
+										<a href="<%= link %>"><%= value %></a>
+									<% } else { %>
+										<%= value %>
+									<% } %>
+								</td>
+							</tr>
+						<% }); %>
+					</tbody>
+				</table>
+			<% } else { %>
+				<p class="no-data">Keine berechneten Werte vorhanden</p>
+			<% } %>
+		</div>
+	</div>
+	
+	<!-- Raw JSON Section (for debugging) -->
+	<div class="record-section collapsible collapsed">
+		<h3>Rohdaten</h3>
+		<div class="collapsible-content">
+			<pre><%= JSON.stringify(record.data, null, 2) %></pre>
+			<pre><%= JSON.stringify(record.delta, null, 2) %></pre>
 		</div>
 	</div>
 	
 	<div class="actions">
-		<a href="/records" class="back-link">← Zurück zur Übersicht</a>
+		<a href="/records" class="btn">Zurück zur Übersicht</a>
 	</div>
 </div> 

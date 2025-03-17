@@ -1,7 +1,8 @@
 import sqlite3 from 'sqlite3';
 import { parseIzarXml } from './mbus.js';
-import { formatDate } from './utils.js';
-import { deltaColumns } from './settings.js';
+import { formatDate, tryParseJson } from './utils.js';
+import { colPreRecord, colPreData, colPreDelta, deltaColumns, colPreCustom } from './settings.js';
+import { Record } from './record.js';
 
 const Sqlite3 = sqlite3.verbose();
 
@@ -40,6 +41,11 @@ function createAsyncMethods(db) {
 	return db;
 }
 
+function escapeJsonPath(...parts) {
+	/* escaping within quotes is not implemented in sqlite, which doesn't allow keys with both dot/opening-bracket AND doube-quote in it */
+	return "'$." + parts.map(p => p.includes(".") || p.includes("[") ? '"' + p.replace(/"/g, '') + '"' : p).join(".") + "'";
+}
+
 // Initialize the database
 export async function initDatabase(dbfile) {
 	const db = createAsyncMethods(new Sqlite3.Database(dbfile));
@@ -51,7 +57,8 @@ export async function initDatabase(dbfile) {
 			address TEXT NOT NULL UNIQUE,
 			name TEXT,
 			description TEXT,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			overview_columns JSON
 		)
 	`);
 	await db.runAsync(`
@@ -154,8 +161,6 @@ async function processFile(db, data, sourceId) {
 				const recordJson = JSON.stringify(record);
 				await insertRecord(db, sourceId, recordJson);
 			}
-			
-			return { recordCount: parsedData.records.length };
 		}
 		else {
 			console.warn(`No records found in source ID ${sourceId}`);
@@ -172,51 +177,63 @@ async function processFile(db, data, sourceId) {
 // Insert a single record into the database
 async function insertRecord(db, sourceId, recordJson) {
 	// Extract device address from the record data
-	const record = JSON.parse(recordJson);
-	const deviceAddress = record.device || record.mbusId || '';  // Use empty string for unknown device
+	const recordData = JSON.parse(recordJson);
+	const deviceAddress = recordData.device || recordData.mbusId || '';  // Use empty string for unknown device
 	
 	// Check if the device exists in the devices table
 	let device = await db.getAsync('SELECT id FROM devices WHERE address = ?', [deviceAddress]);
 	if (!device) {
 		// Insert the device if it doesn't exist
 		const deviceResult = await db.runAsync('INSERT INTO devices (address, name, description) VALUES (?, ?, ?)', 
-			[deviceAddress, record.deviceName || deviceAddress, 'Automatisch erstellt am ' + formatDate(new Date(), 'dd.mm.yyyy hh:ii')]
+			[deviceAddress, recordData.deviceName || deviceAddress, 'Automatisch erstellt am ' + formatDate(new Date(), 'dd.mm.yyyy hh:ii')]
 		);
 		device = { id: deviceResult.lastID };
 		console.log(`Created device ID ${device.id} for address ${deviceAddress}`);
 	}
 
-	let time = record.izarTimestamp || record.telTimestamp || record.time || Date.now();
+	let time = recordData.izarTimestamp || recordData.telTimestamp || recordData.time || Date.now();
 	if(time < 10000000000) time *= 1000;
 
 	let delta = {};
-	if(typeof record.data === 'object') {
-		Object.entries(deltaColumns).forEach(async ([column, deltaColumn]) => {
-			if(column in record.data && typeof record.data[column] === 'number') {
-				// Find the last record's value for this column and device before current time
-				const lastRecord = await db.getAsync(`
-					SELECT 
-						json_extract(data, '$.data.?') as value,
-						time 
-					FROM records 
-					WHERE device = ? 
-						AND json_extract(data, '$.data.?') IS NOT NULL
-						AND time < datetime(?/1000, 'unixepoch')
-					ORDER BY time DESC, id DESC 
-					LIMIT 1
-				`, [column, device.id, column, time]);
+	for (let [deltaColumn, sourceColumn] of Object.entries(deltaColumns)) {
+		let deltaKey = deltaColumn.substring(1);
+		let sourceKey = sourceColumn.substring(1);
+		if(sourceKey in recordData && typeof recordData[sourceKey] === 'number') {
+			/* Find the last record's value for this column and device before current time */
+			const lastRecord = await db.getAsync(`
+				SELECT 
+					id,
+					time, 
+					json_extract(data, ${escapeJsonPath(sourceKey)}) as value
+				FROM records 
+				WHERE device = ? 
+					AND json_extract(data, ${escapeJsonPath(sourceKey)}) IS NOT NULL
+					AND time < datetime(?/1000, 'unixepoch')
+				ORDER BY time DESC, id DESC 
+				LIMIT 1
+			`, [device.id, time]);
 
-				if (lastRecord) {
-					const lastTime = new Date(lastRecord.time).getTime();
-					const timeDiffSeconds = (time - lastTime) / 1000;
+			if (lastRecord) {
+				const lastTime = new Date(lastRecord.time + 'Z').getTime();
+				const timeDiffSeconds = (time - lastTime) / 1000;
 
-					if (timeDiffSeconds > 0) {
-						const valueDiff = record.data[column] - lastRecord.value;
-						delta[deltaColumn] = valueDiff / timeDiffSeconds;
-					}
+				if (timeDiffSeconds > 0) {
+					const valueDiff = recordData[sourceKey] - lastRecord.value;
+					// Calculate the rate of change per second
+					const ratePerSecond = valueDiff / timeDiffSeconds;
+					
+					// Store the rate per second directly without any additional calculations
+					delta[deltaKey] = {
+						value: ratePerSecond,
+						prevId: lastRecord.id,
+						timeDiff: timeDiffSeconds,
+						valueDiff: valueDiff
+					};
+					
+					console.log(`Delta calculation for ${deltaKey}: ${valueDiff} / ${timeDiffSeconds} = ${ratePerSecond}`);
 				}
 			}
-		});
+		}
 	}
 
 	const result = await db.runAsync(
@@ -224,52 +241,58 @@ async function insertRecord(db, sourceId, recordJson) {
 		[device.id, sourceId, time, recordJson, JSON.stringify(delta)]
 	);
 
-	// Check for future records that need their delta updated
-	if(typeof record.data === 'object') {
-		Object.entries(deltaColumns).forEach(async ([column, deltaColumn]) => {
-			if(column in record.data && typeof record.data[column] === 'number') {
-				// Find the next record after this one for the same device and column
-				const nextRecord = await db.getAsync(`
-					SELECT 
-						id,
-						json_extract(data, '$.data.?') as value,
-						time,
-						delta
-					FROM records 
-					WHERE device = ? 
-						AND json_extract(data, '$.data.?') IS NOT NULL
-						AND time > datetime(?/1000, 'unixepoch')
-					ORDER BY time ASC, id ASC
-					LIMIT 1
-				`, [column, device.id, column, time]);
+	/* Check for future records that need their delta updated */
+	for(let [deltaColumn, sourceColumn] of Object.entries(deltaColumns)) {
+		let deltaKey = deltaColumn.substring(1);
+		let sourceKey = sourceColumn.substring(1);
+		if(sourceKey in recordData && typeof recordData[sourceKey] === 'number') {
+			/* Find the next record after this one for the same device and column */
+			const nextRecord = await db.getAsync(`
+				SELECT 
+					id,
+					time,
+					json_extract(data, ${escapeJsonPath(sourceKey)}) as value,
+					delta
+				FROM records 
+				WHERE device = ? 
+					AND json_extract(data, ${escapeJsonPath(sourceKey)}) IS NOT NULL
+					AND time > datetime(?/1000, 'unixepoch')
+				ORDER BY time ASC, id ASC
+				LIMIT 1
+			`, [device.id, time]);
 
-				if (nextRecord) {
-					const nextTime = new Date(nextRecord.time).getTime();
-					const timeDiffSeconds = (nextTime - time) / 1000;
+			if (nextRecord) {
+				const nextTime = new Date(nextRecord.time + 'Z').getTime();
+				const timeDiffSeconds = (nextTime - time) / 1000;
 
-					if (timeDiffSeconds > 0) {
-						const valueDiff = nextRecord.value - record.data[column];
-						
-						// Parse existing delta JSON
-						let deltaJson = {};
-						try {
-							deltaJson = JSON.parse(nextRecord.delta);
-						} catch(e) { }
-						
-						// Update the delta value
-						deltaJson[deltaColumns] = valueDiff / timeDiffSeconds;
-						
-						// Update the record
-						await db.runAsync(
-							"UPDATE records SET delta = ? WHERE id = ?",
-							[JSON.stringify(deltaJson), nextRecord.id]
-						);
-
-						console.log(`Updated delta for record ID ${nextRecord.id} to ${deltaJson[column]}`);
-					}
+				if (timeDiffSeconds > 0) {
+					const valueDiff = nextRecord.value - recordData[sourceKey];
+					const ratePerSecond = valueDiff / timeDiffSeconds;
+					
+					// Parse the existing delta JSON
+					let nextDelta = {};
+					try {
+						nextDelta = JSON.parse(nextRecord.delta);
+					} catch (e) {}
+					
+					// Update the delta value for this key
+					nextDelta[deltaKey] = {
+						value: ratePerSecond,
+						prevId: result.lastID,
+						timeDiff: timeDiffSeconds,
+						valueDiff: valueDiff
+					};
+					
+					// Update the record with the new delta
+					await db.runAsync(
+						"UPDATE records SET delta = ? WHERE id = ?",
+						[JSON.stringify(nextDelta), nextRecord.id]
+					);
+					
+					console.log(`Updated next record ${nextRecord.id} delta for ${deltaKey}: ${valueDiff} / ${timeDiffSeconds} = ${ratePerSecond}`);
 				}
 			}
-		});
+		}
 	}
 	
 	console.log(`Created record ID ${result.lastID} from source ID ${sourceId} for device ${deviceAddress}`);
@@ -277,33 +300,184 @@ async function insertRecord(db, sourceId, recordJson) {
 }
 
 
-
 // Get processed records
-export async function getRecords(db, limit = 100, offset = 0) {
+export async function getRecords(db, limit = 100, offset = 0, filters = []) {
 	try {
+		let whereClause = '';
+		let whereParams = [];
+		
+		// Build WHERE clause from filters
+		if (filters && filters.length > 0) {
+			const conditions = [];
+			
+			filters.forEach(filter => {
+				const { column, operator, value } = filter;
+				
+				// Get the prefix and field name
+				const prefix = column.charAt(0);
+				const fieldName = column.substring(1);
+				
+				// Determine if this is a base column or a nested JSON field
+				let sqlCondition;
+				
+				if (prefix === colPreRecord) {
+					// Direct record properties
+					if (['id', 'device', 'source', 'time'].includes(fieldName)) {
+						// Base columns
+						switch (operator) {
+							case 'eq':
+								sqlCondition = `r.${fieldName} = ?`;
+								whereParams.push(value);
+								break;
+							case 'lt':
+								sqlCondition = `r.${fieldName} < ?`;
+								whereParams.push(value);
+								break;
+							case 'lte':
+								sqlCondition = `r.${fieldName} <= ?`;
+								whereParams.push(value);
+								break;
+							case 'gt':
+								sqlCondition = `r.${fieldName} > ?`;
+								whereParams.push(value);
+								break;
+							case 'gte':
+								sqlCondition = `r.${fieldName} >= ?`;
+								whereParams.push(value);
+								break;
+						}
+					} else if (fieldName === 'deviceName') {
+						// Device name column
+						switch (operator) {
+							case 'eq':
+								sqlCondition = `d.name = ?`;
+								whereParams.push(value);
+								break;
+							case 'lt':
+								sqlCondition = `d.name < ?`;
+								whereParams.push(value);
+								break;
+							case 'lte':
+								sqlCondition = `d.name <= ?`;
+								whereParams.push(value);
+								break;
+							case 'gt':
+								sqlCondition = `d.name > ?`;
+								whereParams.push(value);
+								break;
+							case 'gte':
+								sqlCondition = `d.name >= ?`;
+								whereParams.push(value);
+								break;
+						}
+					} else if (fieldName === 'sourceFilename' || fieldName === 'sourceType') {
+						// Source columns
+						const sourceCol = fieldName === 'sourceFilename' ? 'filename' : 'type';
+						switch (operator) {
+							case 'eq':
+								sqlCondition = `s.${sourceCol} = ?`;
+								whereParams.push(value);
+								break;
+							case 'lt':
+								sqlCondition = `s.${sourceCol} < ?`;
+								whereParams.push(value);
+								break;
+							case 'lte':
+								sqlCondition = `s.${sourceCol} <= ?`;
+								whereParams.push(value);
+								break;
+							case 'gt':
+								sqlCondition = `s.${sourceCol} > ?`;
+								whereParams.push(value);
+								break;
+							case 'gte':
+								sqlCondition = `s.${sourceCol} >= ?`;
+								whereParams.push(value);
+								break;
+						}
+					}
+				} else if (prefix === colPreData) {
+					// JSON fields in data
+					switch (operator) {
+						case 'eq':
+							sqlCondition = `JSON_EXTRACT(r.data, '$.${fieldName}') = ?`;
+							whereParams.push(value);
+							break;
+						case 'lt':
+							sqlCondition = `JSON_EXTRACT(r.data, '$.${fieldName}') < ?`;
+							whereParams.push(value);
+							break;
+						case 'lte':
+							sqlCondition = `JSON_EXTRACT(r.data, '$.${fieldName}') <= ?`;
+							whereParams.push(value);
+							break;
+						case 'gt':
+							sqlCondition = `JSON_EXTRACT(r.data, '$.${fieldName}') > ?`;
+							whereParams.push(value);
+							break;
+						case 'gte':
+							sqlCondition = `JSON_EXTRACT(r.data, '$.${fieldName}') >= ?`;
+							whereParams.push(value);
+							break;
+					}
+				} else if (prefix === colPreDelta) {
+					// JSON fields in delta
+					switch (operator) {
+						case 'eq':
+							sqlCondition = `JSON_EXTRACT(r.delta, '$.${fieldName}') = ?`;
+							whereParams.push(value);
+							break;
+						case 'lt':
+							sqlCondition = `JSON_EXTRACT(r.delta, '$.${fieldName}') < ?`;
+							whereParams.push(value);
+							break;
+						case 'lte':
+							sqlCondition = `JSON_EXTRACT(r.delta, '$.${fieldName}') <= ?`;
+							whereParams.push(value);
+							break;
+						case 'gt':
+							sqlCondition = `JSON_EXTRACT(r.delta, '$.${fieldName}') > ?`;
+							whereParams.push(value);
+							break;
+						case 'gte':
+							sqlCondition = `JSON_EXTRACT(r.delta, '$.${fieldName}') >= ?`;
+							whereParams.push(value);
+							break;
+					}
+				}
+				
+				if (sqlCondition) {
+					conditions.push(sqlCondition);
+				}
+			});
+			
+			if (conditions.length > 0) {
+				whereClause = `WHERE ${conditions.join(' AND ')}`;
+			}
+		}
+		
 		// Get total count first
 		const countResult = await db.getAsync(`
 			SELECT COUNT(*) as total
 			FROM records r
 			JOIN sources s ON r.source = s.id
-		`);
+			JOIN devices d ON r.device = d.id
+			${whereClause}
+		`, whereParams);
 		
 		// Get paginated records
 		const records = await db.allAsync(`
-			SELECT r.id, r.device, r.source, r.time, r.data, r.delta, d.name as deviceName, s.filename as sourceFilename, s.type as sourceType
+			SELECT r.id, r.device, r.source, r.time, r.data, r.delta, d.name as deviceName, (COALESCE(s.filename, s.type, 'Unbekannt')) as sourceName
 			FROM records r
 			JOIN devices d ON r.device = d.id
 			JOIN sources s ON r.source = s.id
+			${whereClause}
 			ORDER BY r.time DESC, r.id DESC
 			LIMIT ? OFFSET ?
-		`, [limit, offset]);
+		`, [...whereParams, limit, offset]);
 		
 		return {
-			records: records.map(record => ({
-				...record,
-				data: JSON.parse(record.data),
-				delta: JSON.parse(record.delta)
-			})),
+			records: records.map(record => new Record(record)),
 			total: countResult.total
 		};
 	} catch (err) {
@@ -315,24 +489,45 @@ export async function getRecords(db, limit = 100, offset = 0) {
 export async function getRecord(db, id) {
 	try {
 		const record = await db.getAsync(`
-			SELECT r.id, r.source, r.time, r.data, s.filename as sourceFilename, s.type as sourceType
+			SELECT r.id, r.device, r.source, r.time, r.data, r.delta, d.name as deviceName, d.overview_columns as deviceOverviewColumns, (COALESCE(s.filename, s.type, 'Unbekannt')) as sourceName
 			FROM records r
+			JOIN devices d ON r.device = d.id
 			JOIN sources s ON r.source = s.id
 			WHERE r.id = ?
 		`, [id]);
 
 		if (!record) return null;
 
-		return {
-			...record,
-			data: JSON.parse(record.data)
-		};
+		let result = new Record(record);
+		for(let [deltaKey, deltaInfo] of Object.entries(result.delta)) {
+			if(deltaInfo.prevId) {
+				const sourceKey = deltaColumns[colPreDelta + deltaKey].substring(1);
+				const prevRecord = await db.getAsync(`
+					SELECT
+						id,
+						time,
+						json_extract(data, ${escapeJsonPath(sourceKey)}) as value
+					FROM records r
+					WHERE r.id = ?
+				`, [deltaInfo.prevId]);
+				if(!prevRecord) continue;
+				deltaInfo.prevValue = prevRecord.value;
+				deltaInfo.thisValue = result.data[sourceKey];
+				deltaInfo.valueDiff = deltaInfo.thisValue - deltaInfo.prevValue;
+				deltaInfo.prevTime = new Date(prevRecord.time + 'Z');
+				deltaInfo.thisTime = result.time;
+				deltaInfo.timeDiff = deltaInfo.thisTime.getTime() - deltaInfo.prevTime.getTime();
+				deltaInfo.ratePerSec = deltaInfo.valueDiff / (deltaInfo.timeDiff / 1000);
+				console.log(deltaInfo.valueDiff / deltaInfo.timeDiff);
+			}
+		}
+		// Create and return a Record instance
+		return result;
 	} catch (err) {
 		console.error(`Database error: ${err.message}`);
 		throw err;
 	}
 }
-
 
 // Get all devices
 export async function getDevices(db, limit = 100, offset = 0) {
@@ -378,7 +573,7 @@ export async function getDevice(db, id) {
 		
 		// Get the most recent records for this device
 		const records = await db.allAsync(`
-			SELECT r.id, r.device, r.source, r.time, r.data, s.filename as sourceFilename, s.type as sourceType
+			SELECT r.id, r.device, r.source, r.time, r.data, r.delta, d.name as deviceName, (COALESCE(s.filename, s.type, 'Unbekannt')) as sourceName
 			FROM records r
 			JOIN sources s ON r.source = s.id
 			WHERE r.device = ?
@@ -413,7 +608,7 @@ export async function getSources(db, limit = 100, offset = 0) {
 			FROM sources s
 			LEFT JOIN records r ON s.id = r.source
 			GROUP BY s.id
-			ORDER BY s.created_at DESC
+			ORDER BY s.created_at DESC, s.id DESC
 			LIMIT ? OFFSET ?
 		`, [limit, offset]);
 		

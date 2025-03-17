@@ -149,43 +149,113 @@ tr:hover {
 }
 
 /* Record detail */
-.record-card {
-	background-color: white;
-	border-radius: var(--border-radius);
-	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-	margin-bottom: 1.5rem;
+.record-detail {
+	max-width: 1200px;
+	margin: 0 auto;
 }
 
-.record-header {
-	background-color: var(--secondary-color);
-	color: white;
-	padding: 1rem;
-	border-radius: var(--border-radius) var(--border-radius) 0 0;
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.record-body {
-	padding: 1.5rem;
-}
-
-.record-field {
+.record-meta {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: 1rem;
 	margin-bottom: 1rem;
 }
 
-.record-field label {
-	font-weight: bold;
-	display: block;
-	margin-bottom: 0.25rem;
-	color: var(--dark-color);
+.meta-item {
+	display: flex;
+	flex-direction: column;
+	background-color: white;
+	padding: 0.75rem;
+	border-radius: var(--border-radius);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.json-data {
-	background-color: #f8f9fa;
-	padding: 1rem;
+.meta-label {
+	font-weight: bold;
+	color: var(--dark-color);
+	font-size: 0.9rem;
+	margin-bottom: 0.25rem;
+}
+
+.meta-value {
+	font-size: 1.1rem;
+}
+
+.record-section {
+	margin-bottom: 1rem;
+	background-color: white;
 	border-radius: var(--border-radius);
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+	overflow: hidden;
+}
+
+.record-section h3 {
+	margin: 0;
+	padding: 1rem;
+	background-color: var(--light-color);
+	border-bottom: 1px solid #ddd;
+	color: var(--dark-color);
+	font-size: 1.1rem;
+}
+
+.record-section .collapsible-content {
+	padding: 1rem;
+}
+
+.record-section table {
+	margin-bottom: 0;
+	box-shadow: none;
+}
+
+.no-data {
+	color: #888;
+	font-style: italic;
+	text-align: center;
+	padding: 1rem;
+}
+
+.delta-info {
+	margin-bottom: 1rem;
+	font-style: italic;
+	color: #666;
+}
+
+/* Collapsible sections */
+.collapsible h3 {
+	cursor: pointer;
+	position: relative;
+	padding-right: 20px;
+}
+
+.collapsible h3::after {
+	content: '▼';
+	position: absolute;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	font-size: 0.8em;
+	transition: transform 0.2s ease;
+}
+
+.collapsible.collapsed h3::after {
+	transform: translateY(-50%) rotate(-90deg);
+}
+
+.collapsible .collapsible-content {
+	max-height: 1000px;
+	overflow: hidden;
+	transition: max-height 0.3s ease;
+}
+
+.collapsible.collapsed .collapsible-content {
+	max-height: 0;
+}
+
+pre {
+	background-color: #f5f5f5;
+	padding: 1rem;
 	overflow-x: auto;
+	border-radius: var(--border-radius);
 	font-family: monospace;
 	font-size: 0.9rem;
 }
@@ -268,7 +338,7 @@ tr:hover {
 	padding: 15px;
 	background-color: var(--light-color);
 	border-radius: var(--border-radius);
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .column-selection h3 {
@@ -321,7 +391,77 @@ tr:hover {
 /* Table number formatting */
 td.number {
 	text-align: right;
+	font-family: monospace;
 }
+
 td.unknown {
 	color: var(--unknown-color);
+}
+
+/* Handle long values in table cells */
+td {
+	max-width: 300px;
+	overflow-x: auto;
+	white-space: nowrap;
+	padding: 8px;
+}
+
+/* For cells with potentially long content */
+td.long-text {
+	position: relative;
+	overflow-x: auto;
+	white-space: nowrap;
+	padding-right: 16px; /* Extra padding for scrollbar */
+}
+
+/* Show a subtle indicator for scrollable content */
+td.long-text:after {
+	content: "";
+	position: absolute;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	width: 20px;
+	background: linear-gradient(to right, transparent, var(--light-color));
+	pointer-events: none; /* Allow clicks to pass through */
+}
+
+/* For JSON or pre-formatted content */
+td pre {
+	max-width: 100%;
+	overflow-x: auto;
+	white-space: pre;
+	margin: 0;
+	padding: 0;
+	font-size: 0.9rem;
+}
+
+/* Visual indicator for scrollable content */
+td.long-text.is-scrollable::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	right: 0;
+	height: 100%;
+	width: 15px;
+	background: linear-gradient(to right, transparent, rgba(240, 240, 240, 0.9));
+	pointer-events: none;
+}
+
+/* Hover effect for scrollable cells */
+td.long-text.hover {
+	box-shadow: inset 0 0 0 2px #007bff;
+}
+
+/* Pre-formatted content in cells */
+td.long-text pre {
+	margin: 0;
+	white-space: pre;
+	overflow-x: auto;
+}
+
+/* JSON content styling */
+.json-content {
+	font-family: monospace;
+	white-space: pre;
 }

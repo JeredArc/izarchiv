@@ -45,7 +45,7 @@
 								<tr>
 									<td><a href="/record/<%= record.id %>"><%= record.id %></a></td>
 									<td class="timestamp"><%- formatDate(record.time, defaultUiDateFormat) %></td>
-									<td><a href="/source/<%= record.source %>"><%= record.sourceFilename || record.sourceType || 'Unbekannt' %></a></td>
+									<td><a href="/source/<%= record.source %>"><%= record.sourceName %></a></td>
 									<td><%= JSON.stringify(record.data) %></td>
 								</tr>
 							<% }); %>
