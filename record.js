@@ -92,10 +92,10 @@ export class Record {
 		if(typeof value === 'number') {
 			classes.push('number');
 			value = formatNumber(value, column);
-		} else if(typeof value === 'string' && value.length > 50) {
-			classes.push('long-text');
+		// } else if(typeof value === 'string' && value.length > 50) {
+		// 	classes.push('long-text');
 		} else if(typeof value === 'object' && value !== null) {
-			classes.push('long-text');
+			// classes.push('long-text');
 			value = JSON.stringify(value);
 		} else if(value === undefined) {
 			classes.push('unknown');

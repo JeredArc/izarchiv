@@ -1,10 +1,13 @@
-<div class="record-detail">
+<div class="detail-page">
+	<div class="top-actions">
+		<a href="<%= backlink %>" class="btn">Zurück zur Übersicht</a>
+	</div>
 	<h2>Messwert Details #<%= record.id %></h2>
 	
 	<!-- Overview Section -->
-	<div class="record-section">
+	<div class="detail-section">
 		<h3>Übersicht</h3>
-		<div class="record-meta">
+		<div class="detail-summary">
 			
 			<% [
 				colPreRecord + 'time', colPreRecord + 'deviceName', colPreRecord + 'sourceName',
@@ -12,9 +15,9 @@
 			].forEach(column => { 
 				let { value, link, classes } = record.columnOutput(column);
 				%>
-				<div class="meta-item">
-					<span class="meta-label"><%= columnCaption(column) %>:</span>
-					<span class="meta-value <%= classes.join(' ') %>"><span>
+				<div class="summary-item">
+					<span class="summary-label"><%= columnCaption(column) %>:</span>
+					<span class="summary-value <%= classes.join(' ') %>"><span>
 						<% if (link) { %>
 							<a href="<%= link %>"><%= value %></a>
 						<% } else { %>
@@ -27,11 +30,11 @@
 	</div>
 	
 	<!-- Data Values Section -->
-	<div class="record-section collapsible">
+	<div class="detail-section collapsible">
 		<h3>Messwerte</h3>
 		<div class="collapsible-content">
 			<div class="table-container">
-				<table class="record-data">
+				<table class="detail-table record-data">
 					<thead>
 						<tr>
 							<th>Feld</th>
@@ -66,12 +69,12 @@
 	</div>
 	
 	<!-- Delta Values Section -->
-	<div class="record-section collapsible">
+	<div class="detail-section collapsible">
 		<h3>Änderungswerte</h3>
 		<div class="collapsible-content">
 			<% if (record.hasDeltaColumns) { %>
 				<div class="table-container">
-					<table class="record-delta">
+					<table class="detail-table record-delta">
 						<thead>
 							<tr>
 								<th>Feld</th>
@@ -146,12 +149,12 @@
 
 	
 	<!-- Calculated Values Section -->
-	<div class="record-section collapsible">
+	<div class="detail-section collapsible">
 		<h3>Umgerechnete Einheiten</h3>
 		<div class="collapsible-content">
 			<% if (record.hasCustomColumns) { %>
 				<div class="table-container">
-					<table class="record-calculated">
+					<table class="detail-table record-calculated">
 						<thead>
 							<tr>
 								<th>Feld</th>
@@ -183,14 +186,11 @@
 	</div>
 	
 	<!-- Raw JSON Section (for debugging) -->
-	<div class="record-section collapsible collapsed">
+	<div class="detail-section collapsible collapsed">
 		<h3>Rohdaten</h3>
 		<div class="collapsible-content">
-			<pre><%= JSON.stringify(record.data, null, 2) %></pre>
+			<pre class="json-content"><%= JSON.stringify(record.data, null, 2) %></pre>
 		</div>
 	</div>
-	
-	<div class="actions">
-		<a href="<%= backlink %>" class="btn">Zurück zur Übersicht</a>
-	</div>
+
 </div> 

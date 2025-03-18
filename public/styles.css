@@ -2,12 +2,15 @@
 :root {
 	--primary-color: #2c3e50;
 	--secondary-color: #3498db;
-	--accent-color: #e74c3c;
 	--light-color: #ecf0f1;
 	--dark-color: #34495e;
 	--text-color: #333;
-	--border-radius: 3px;
+	--background-color: #f5f5f5;
 	--unknown-color: #999;
+	--border-radius: 3px;
+	--shadow-color: rgba(0, 0, 0, 0.1);
+	--overlay-shadow-color: rgba(0, 0, 0, 0.3);
+	--line-color: #ddd;
 }
 
 * {
@@ -17,20 +20,20 @@
 }
 
 html {
-	font-size: 12px;
+	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+	font-size: 11px;
+	line-height: 1.6;
+	color: var(--text-color);
 }
 
 body {
-	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-	line-height: 1.6;
-	color: var(--text-color);
-	background-color: #f5f5f5;
-	font-size: 12px;
+	background-color: var(--background-color);
 	min-height: 100vh;
 	margin: 0;
 	padding-top: 80px; /* Space for fixed header */
 	padding-bottom: 60px; /* Space for fixed footer - increased */
 }
+
 body.list { /* use a flex layout taking up all available space */
 	padding: 0;
 	display: flex;
@@ -50,7 +53,7 @@ header {
 	background-color: var(--primary-color);
 	color: white;
 	padding: 0.75rem 0;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 2px 4px var(--shadow-color);
 	position: fixed;
 	top: 0;
 	left: 0;
@@ -64,7 +67,7 @@ body.list header {
 
 header h1 {
 	margin: 0;
-	font-size: 1.4rem;
+	font-size: 1.5rem;
 }
 
 header nav {
@@ -129,7 +132,7 @@ h2 {
 }
 
 /* Dashboard */
-.dashboard h2, .list-page h2, .record-detail h2 {
+.dashboard h2, .list-page h2, .detail-page h2 {
 	margin-bottom: 1.2rem;
 	color: var(--primary-color);
 	border-bottom: 2px solid var(--secondary-color);
@@ -150,6 +153,7 @@ h2 {
 	margin-bottom: 1rem;
 	flex-wrap: wrap;
 	gap: 0.5rem;
+    min-height: 2rem;
 }
 
 .list-info {
@@ -171,7 +175,6 @@ h2 {
 	border-radius: var(--border-radius);
 	cursor: pointer;
 	font-weight: bold;
-	font-size: 0.9rem;
 }
 
 .list-controls .control-button:hover {
@@ -180,7 +183,7 @@ h2 {
 
 .list-page .table-container {
 	overflow: auto;
-	border: 1px solid #ddd;
+	border: 1px solid var(--line-color);
 	border-radius: 4px;
 	max-height: calc(100vh - 250px); /* Adjusted for fixed header/footer */
 }
@@ -192,14 +195,18 @@ h2 {
 	position: relative;
 }
 
-/* Table container in record-detail page */
-.record-detail .table-container {
+/* Table container in detail-page page */
+.detail-page .table-container {
 	max-height: none; /* Remove height restriction */
 	overflow-y: visible; /* Allow content to flow naturally */
-	border: 1px solid #ddd;
+	border: 1px solid var(--line-color);
 	border-radius: 4px;
 	margin-bottom: 1rem;
 	width: 100%;
+}
+
+.collapsible-content>.table-container {
+	margin-bottom: 0;
 }
 
 /* Overlay panels */
@@ -209,7 +216,7 @@ h2 {
 	right: 1rem;
 	background-color: white;
 	border-radius: var(--border-radius);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	box-shadow: 0 4px 12px var(--overlay-shadow-color);
 	padding: 1rem;
 	z-index: 99; /* Just below header z-index */
 	width: 80%;
@@ -224,7 +231,7 @@ h2 {
 .overlay-panel h3 {
 	margin-bottom: 0.8rem;
 	color: var(--primary-color);
-	font-size: 1.1rem;
+	font-size: 1.2rem;
 }
 
 .overlay-panel .panel-actions {
@@ -264,7 +271,6 @@ h2 {
 
 .list-info {
 	color: var(--dark-color);
-	font-size: 0.9rem;
 	margin: 0;
 }
 
@@ -276,23 +282,22 @@ h2 {
 	margin: 0; /* Remove margin */
 }
 
+.table-container thead tr, .table-container thead th {
+	background-color: var(--primary-color);
+}
+.table-container thead th:not(:has(.th-content)) {
+	padding: 0.6rem;
+}
+
 /* Sticky table headers with max height and hover expansion */
-.table-container thead th {
+.list-table thead th {
 	position: sticky;
 	top: 0; /* Stick to the top of the container */
 	z-index: 10;
-	background-color: var(--primary-color);
-	box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
 	height: 2.8em; /* Fixed height for th */
 	overflow: visible; /* Allow overflow for the absolute positioned content */
 	padding: 0; /* Remove padding from th */
 	white-space: nowrap; /* Prevent wrapping */
-}
-
-/* Override sticky positioning for record-detail page tables */
-.record-detail .table-container thead th {
-	position: static; /* Remove sticky positioning */
-	box-shadow: none; /* Remove box shadow */
 }
 
 .table-container thead th .th-content {
@@ -309,12 +314,6 @@ h2 {
 	transition: all 0.2s ease;
 }
 
-/* Override absolute positioning for record-detail page tables */
-.record-detail .table-container thead th .th-content {
-	position: static; /* Remove absolute positioning */
-	padding: 0.6rem; /* Keep the padding */
-}
-
 .table-container thead th:hover {
 	overflow: visible;
 	z-index: 11; /* Ensure it appears above other headers */
@@ -322,7 +321,7 @@ h2 {
 .table-container thead th:hover .th-content {
 	visibility: visible;
 	background-color: var(--primary-color);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+	box-shadow: 0 2px 8px var(--overlay-shadow-color);
 	border-radius: 0 0 var(--border-radius) var(--border-radius);
 	height: max-content; /* Allow height to grow */
 	max-height: none; /* Show full content on hover */
@@ -334,47 +333,15 @@ h2 {
 	pointer-events: none;
 }
 
-.stats-cards {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.8rem;
-	margin-bottom: 1.5rem;
-}
-
-.card {
-	background-color: white;
-	border-radius: var(--border-radius);
-	padding: 1.2rem;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-	flex: 1;
-	min-width: 150px;
-}
-
-.card h3 {
-	margin-bottom: 0.4rem;
-	color: var(--dark-color);
-	font-size: 1.1rem;
-}
-
-.card .stat {
-	font-size: 1.5rem;
-	font-weight: bold;
-	color: var(--secondary-color);
-}
-
 /* Tables */
 table {
 	width: 100%;
 	border-collapse: collapse;
 	margin-bottom: 1.2rem;
 	background-color: white;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 2px 4px var(--shadow-color);
 }
 
-/* For very wide tables in the delta section */
-.record-detail .record-delta {
-	min-width: 1000px; /* Ensure wide tables have minimum width */
-}
 
 /* Remove bottom margin from tables inside containers */
 .table-container table {
@@ -384,8 +351,11 @@ table {
 th, td {
 	padding: 0.6rem;
 	text-align: left;
-	border-bottom: 1px solid #ddd;
-	font-size: 0.9rem;
+	border-bottom: 1px solid var(--line-color);
+}
+
+.table-container tbody tr:last-child td {
+    border-bottom: none;
 }
 
 th {
@@ -394,90 +364,71 @@ th {
 }
 
 tr:hover {
-	background-color: #f5f5f5;
+	background-color: var(--background-color);
 }
 
-/* Record detail */
-.record-detail {
-	padding: 0 1rem;
+/* Detail page top actions */
+.detail-page .top-actions {
+	float: right;
+    margin-top: 0.2rem;
 }
 
-/* Record detail header */
-.record-detail h2 {
-	background-color: #f5f5f5;
+/* Detail page header */
+.detail-page h2 {
 	padding-top: 0.5rem;
 	margin-top: 0;
 	margin-bottom: 1.2rem;
 }
 
-/* Record detail footer */
-.record-detail .actions {
-	background-color: #f5f5f5;
-	padding: 0.8rem 0;
-	margin-top: 0.8rem;
-	margin-bottom: 1rem; /* Normal margin */
-}
-
-.record-detail .record-section {
+.detail-page .detail-section {
 	margin-bottom: 0.8rem;
 	background-color: white;
 	border-radius: var(--border-radius);
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 2px 4px var(--shadow-color);
 	overflow: hidden;
 }
 
-/* When a collapsible section is expanded, it can grow */
-.record-detail .record-section.collapsible:not(.collapsed) {
-	display: flex;
-	flex-direction: column;
+.detail-section h3 {
+	margin: 0;
+	padding: 0.8rem;
+	background-color: var(--light-color);
+	border-bottom: 1px solid var(--line-color);
+	color: var(--dark-color);
+	font-size: 1.2rem;
 }
 
-.record-detail .record-section.collapsible:not(.collapsed) .collapsible-content {
-	overflow: visible; /* Let content flow naturally */
-}
-
-.record-meta {
+.detail-section .detail-summary {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
 	gap: 0.8rem;
-	margin-bottom: 0.8rem;
+	margin: 0.8rem;
 }
 
-.meta-item {
+.summary-item {
 	display: flex;
 	flex-direction: column;
 	background-color: white;
 	padding: 0.6rem;
 	border-radius: var(--border-radius);
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border: solid 1px var(--line-color);
 }
 
-.meta-label {
+.summary-item:hover {
+	background-color: var(--background-color);
+}
+
+.summary-label {
 	font-weight: bold;
 	color: var(--dark-color);
-	font-size: 0.8rem;
 	margin-bottom: 0.2rem;
 }
 
-.meta-value {
-	font-size: 0.9rem;
-}
-
-.record-section h3 {
-	margin: 0;
-	padding: 0.8rem;
-	background-color: var(--light-color);
-	border-bottom: 1px solid #ddd;
-	color: var(--dark-color);
-	font-size: 1rem;
-}
-
-.record-section .collapsible-content {
+.detail-section .collapsible-content {
 	padding: 0.8rem;
 	transition: max-height 0.3s ease, padding 0.3s ease;
 }
 
-.record-section table {
+.detail-section table {
 	margin-bottom: 0;
 	box-shadow: none;
 }
@@ -487,14 +438,12 @@ tr:hover {
 	font-style: italic;
 	text-align: center;
 	padding: 0.8rem;
-	font-size: 0.9rem;
 }
 
 .delta-info {
 	margin-bottom: 0.8rem;
 	font-style: italic;
 	color: #666;
-	font-size: 0.9rem;
 }
 
 /* Collapsible sections */
@@ -531,17 +480,19 @@ tr:hover {
 	padding-bottom: 0 !important;
 }
 
-pre {
-	background-color: #f5f5f5;
+pre.json-content {
+	background-color: var(--background-color);
 	padding: 0.8rem;
 	overflow-x: auto;
 	border-radius: var(--border-radius);
 	font-family: monospace;
-	font-size: 0.85rem;
+	font-size: 0.9rem;
 }
 
 /* Buttons */
-.btn {
+button, .btn {
+	font-size: 1rem;
+	font-weight: bold;
 	display: inline-block;
 	background-color: var(--secondary-color);
 	color: white;
@@ -549,122 +500,12 @@ pre {
 	border-radius: var(--border-radius);
 	text-decoration: none;
 	transition: background-color 0.3s;
-	font-size: 0.9rem;
 }
 
-.btn:hover {
+button:hover,.btn:hover {
 	background-color: var(--primary-color);
 }
 
-.actions {
-	margin-top: 0.8rem;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-	.stats-cards {
-		flex-direction: column;
-	}
-	
-	table {
-		display: block;
-		overflow-x: auto;
-	}
-}
-
-/* Pagination */
-.pagination {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	margin: 1.5rem 0;
-	gap: 0.4rem;
-}
-
-.pagination-link {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 2rem;
-	height: 2rem;
-	padding: 0 0.6rem;
-	border-radius: var(--border-radius);
-	background-color: white;
-	color: var(--dark-color);
-	text-decoration: none;
-	border: 1px solid #ddd;
-	transition: all 0.2s ease;
-	font-size: 0.9rem;
-}
-
-.pagination-link:hover {
-	background-color: var(--secondary-color);
-	color: white;
-	border-color: var(--secondary-color);
-}
-
-.pagination-link.active {
-	background-color: var(--primary-color);
-	color: white;
-	border-color: var(--primary-color);
-}
-
-/* Column Selection UI */
-.column-selection {
-	margin: 15px 0;
-	padding: 12px;
-	background-color: var(--light-color);
-	border-radius: var(--border-radius);
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.column-selection h3 {
-	margin-bottom: 8px;
-	color: var(--primary-color);
-	font-size: 1.1rem;
-}
-
-.column-checkboxes {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	margin-bottom: 12px;
-}
-
-.column-checkbox {
-	display: flex;
-	align-items: center;
-	background-color: white;
-	padding: 4px 8px;
-	border-radius: var(--border-radius);
-	border: 1px solid #ddd;
-}
-
-.column-checkbox input[type="checkbox"] {
-	margin-right: 4px;
-	cursor: pointer;
-}
-
-.column-checkbox label {
-	cursor: pointer;
-	font-size: 0.85rem;
-}
-
-.column-selection button {
-	background-color: var(--secondary-color);
-	color: white;
-	border: none;
-	padding: 6px 12px;
-	border-radius: var(--border-radius);
-	cursor: pointer;
-	font-weight: bold;
-	transition: background-color 0.2s;
-	font-size: 0.9rem;
-}
-
-.column-selection button:hover {
-	background-color: #2980b9;
-} 
 
 table.list-table>tbody>tr>td {
 	min-width: 4rem;
@@ -692,120 +533,45 @@ td {
 	padding: 6px;
 }
 
-/* For cells with potentially long content */
-td.long-text {
-	position: relative;
-	overflow-x: auto;
-	white-space: nowrap;
-	padding-right: 12px; /* Extra padding for scrollbar */
-}
 
-/* Show a subtle indicator for scrollable content */
-td.long-text:after {
-	content: "";
-	position: absolute;
-	right: 0;
-	top: 0;
-	bottom: 0;
-	width: 15px;
-	background: linear-gradient(to right, transparent, var(--light-color));
-	pointer-events: none; /* Allow clicks to pass through */
-}
 
-/* For JSON or pre-formatted content */
-td pre {
-	max-width: 100%;
-	overflow-x: auto;
-	white-space: pre;
-	margin: 0;
-	padding: 0;
-	font-size: 0.85rem;
-}
-
-/* Visual indicator for scrollable content */
-td.long-text.is-scrollable::after {
-	content: '';
-	position: absolute;
-	top: 0;
-	right: 0;
-	height: 100%;
-	width: 12px;
-	background: linear-gradient(to right, transparent, rgba(240, 240, 240, 0.9));
-	pointer-events: none;
-}
-
-/* Hover effect for scrollable cells */
-td.long-text.hover {
-	box-shadow: inset 0 0 0 2px #007bff;
-}
-
-/* Pre-formatted content in cells */
-td.long-text pre {
-	margin: 0;
-	white-space: pre;
-	overflow-x: auto;
-}
-
-/* JSON content styling */
-.json-content {
-	font-family: monospace;
-	white-space: pre;
-}
-
-/* Filter panel styles */
-.filter-condition {
+/* Pagination */
+.pagination {
 	display: flex;
+	justify-content: center;
 	align-items: center;
-	margin-bottom: 0.6rem;
-	gap: 0.5rem;
+	margin: 1.5rem 0;
+	gap: 0.4rem;
 }
 
-.filter-column, .filter-operator {
-	flex: 1;
-	padding: 0.4rem;
-	border: 1px solid #ddd;
+.pagination-link {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 2rem;
+	height: 2rem;
+	padding: 0 0.6rem;
 	border-radius: var(--border-radius);
-	font-size: 0.9rem;
+	background-color: white;
+	color: var(--dark-color);
+	text-decoration: none;
+	border: 1px solid var(--line-color);
+	transition: all 0.2s ease;
 }
 
-.filter-value {
-	flex: 1.5;
-	padding: 0.4rem;
-	border: 1px solid #ddd;
-	border-radius: var(--border-radius);
-	font-size: 0.9rem;
-}
-
-.remove-filter {
-	background-color: #e74c3c;
-	color: white;
-	border: none;
-	padding: 0.3rem 0.5rem;
-	border-radius: var(--border-radius);
-	cursor: pointer;
-	font-size: 0.8rem;
-}
-
-.filter-actions {
-	margin-top: 0.8rem;
-}
-
-#add-filter {
+.pagination-link:hover {
 	background-color: var(--secondary-color);
 	color: white;
-	border: none;
-	padding: 0.4rem 0.8rem;
-	border-radius: var(--border-radius);
-	cursor: pointer;
-	font-size: 0.9rem;
+	border-color: var(--secondary-color);
 }
 
-.clear-filters {
-	color: #e74c3c;
-	text-decoration: none;
-	margin-right: auto;
-	font-size: 0.9rem;
+.pagination-link.active {
+	background-color: var(--primary-color);
+	color: white;
+	border-color: var(--primary-color);
 }
+
+
 
 /* Column selection panel styles */
 .column-checkboxes {
@@ -821,8 +587,7 @@ td.long-text pre {
 	background-color: var(--light-color);
 	padding: 0.3rem 0.6rem;
 	border-radius: var(--border-radius);
-	border: 1px solid #ddd;
-	font-size: 0.9rem;
+	border: 1px solid var(--line-color);
 }
 
 .column-checkbox input[type="checkbox"] {
@@ -830,15 +595,59 @@ td.long-text pre {
 	cursor: pointer;
 }
 
-/* Override hover behavior for record-detail page tables */
-.record-detail .table-container thead th:hover {
-	overflow: visible;
-	z-index: auto;
+.column-checkbox label {
+	cursor: pointer;
 }
 
-.record-detail .table-container thead th:hover .th-content {
-	position: static;
-	background-color: var(--primary-color);
-	color: white;
-	white-space: normal;
+
+
+/* Filter panel styles */
+.filter-condition {
+	display: flex;
+	align-items: center;
+	margin-bottom: 0.6rem;
+	gap: 0.5rem;
 }
+
+.filter-column, .filter-operator {
+	flex: 1;
+	padding: 0.4rem;
+	border: 1px solid var(--line-color);
+	border-radius: var(--border-radius);
+}
+
+.filter-value {
+	flex: 1.5;
+	padding: 0.4rem;
+	border: 1px solid var(--line-color);
+	border-radius: var(--border-radius);
+}
+
+.remove-filter {
+	background-color: #e74c3c;
+	color: white;
+	border: none;
+	padding: 0.3rem 0.5rem;
+	border-radius: var(--border-radius);
+	cursor: pointer;
+}
+
+.filter-actions {
+	margin-top: 0.8rem;
+}
+
+#add-filter {
+	background-color: var(--secondary-color);
+	color: white;
+	border: none;
+	padding: 0.4rem 0.8rem;
+	border-radius: var(--border-radius);
+	cursor: pointer;
+}
+
+.clear-filters {
+	color: #e74c3c;
+	text-decoration: none;
+	margin-right: auto;
+}
+

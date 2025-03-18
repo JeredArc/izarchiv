@@ -1,50 +1,60 @@
-<div class="devices-page">
+<div class="list-page">
 	<h2>Geräte</h2>
 	
-	<div class="list-info">
-		<p>Zeige <%= devices.length %> von <%= pagination.total %> Geräten</p>
+	<!-- Control buttons -->
+	<div class="list-controls">
+		<div class="list-info">
+			<p>Zeige <%= devices.length %> von <%= pagination.total %> Geräten</p>
+		</div>
 	</div>
 	
-	<table>
-		<thead>
-			<tr>
-				<th>#</th>
-				<th>Adresse</th>
-				<th>Name</th>
-				<th>Beschreibung</th>
-				<th>Messwerte</th>
-				<th>Erstellt am</th>
-			</tr>
-		</thead>
-		<tbody>
-			<% devices.forEach(device => { %>
+	<div class="table-container">
+		<table class="list-table">
+			<thead>
 				<tr>
-					<td><a href="/device/<%= device.id %>"><%= device.id %></a></td>
-					<td><%= device.address %></td>
-					<td><%= device.name %></td>
-					<td><%= device.description || '' %></td>
-					<td><%= device.recordCount %></td>
-					<td class="timestamp"><%- formatDate(device.created_at, defaultUiDateFormat) %></td>
+					<th><div class="th-content">#</div></th>
+					<th><div class="th-content">Adresse</div></th>
+					<th><div class="th-content">Name</div></th>
+					<th><div class="th-content">Beschreibung</div></th>
+					<th><div class="th-content">Messwerte</div></th>
+					<th><div class="th-content">Erstellt am</div></th>
 				</tr>
-			<% }); %>
-		</tbody>
-	</table>
+			</thead>
+			<tbody>
+				<% devices.forEach(device => { %>
+					<tr>
+						<td><a href="/device/<%= device.id %>"><%= device.id %></a></td>
+						<td><span><%= device.address %></span></td>
+						<td><span><%= device.name %></span></td>
+						<td><span><%= device.description || '' %></span></td>
+						<td class="number"><span><%= device.recordCount %></span></td>
+						<td class="timestamp"><span><%- formatDate(device.created_at, defaultUiDateFormat) %></span></td>
+					</tr>
+				<% }); %>
+			</tbody>
+		</table>
+	</div>
 
-	<% if (pagination.totalPages > 1) { %>
-		<div class="pagination">
-			<% if (pagination.currentPage > 1) { %>
-				<a href="/devices?page=1" class="pagination-link">&laquo;</a>
-				<a href="/devices?page=<%= pagination.currentPage - 1 %>" class="pagination-link">&lsaquo;</a>
-			<% } %>
-			
-			<% for (let i = Math.max(1, pagination.currentPage - 2); i <= Math.min(pagination.totalPages, pagination.currentPage + 2); i++) { %>
-				<a href="/devices?page=<%= i %>" class="pagination-link <%= i === pagination.currentPage ? 'active' : '' %>"><%= i %></a>
-			<% } %>
-			
-			<% if (pagination.currentPage < pagination.totalPages) { %>
-				<a href="/devices?page=<%= pagination.currentPage + 1 %>" class="pagination-link">&rsaquo;</a>
-				<a href="/devices?page=<%= pagination.totalPages %>" class="pagination-link">&raquo;</a>
-			<% } %>
-		</div>
-	<% } %>
+	<!-- Bottom bar with info and pagination -->
+	<div class="list-bottom-bar">
+		<% if (pagination.totalPages > 1) { %>
+			<div class="pagination">
+				<% if (pagination.currentPage > 1) { %>
+					<a href="/devices?page=1" class="pagination-link">&laquo;</a>
+					<a href="/devices?page=<%= pagination.currentPage - 1 %>" class="pagination-link">&lsaquo;</a>
+				<% } %>
+				
+				<% for (let i = Math.max(1, pagination.currentPage - 2); i <= Math.min(pagination.totalPages, pagination.currentPage + 2); i++) { %>
+					<a href="/devices?page=<%= i %>" class="pagination-link <%= i === pagination.currentPage ? 'active' : '' %>"><%= i %></a>
+				<% } %>
+				
+				<% if (pagination.currentPage < pagination.totalPages) { %>
+					<a href="/devices?page=<%= pagination.currentPage + 1 %>" class="pagination-link">&rsaquo;</a>
+					<a href="/devices?page=<%= pagination.totalPages %>" class="pagination-link">&raquo;</a>
+				<% } %>
+			</div>
+		<% } else { %>
+			<div class="pagination"></div> <!-- Empty div to maintain flex layout -->
+		<% } %>
+	</div>
 </div> 

@@ -375,6 +375,8 @@ export function parseMbusTelegram(tel) {
 			}
 			let getMedium = (n) => ([,data_bytes]) => parseMbusMedium(data_bytes);
 			let getManufacturer = (n) => ([,data_bytes]) => parseMbusManufacturer(data_bytes);
+			let getString = (n) => ([,data_bytes]) => hexToString(data_bytes);
+
 			let vif_patterns = [
 				/* [ RegEx search on binary rep of VIF, description of the value, multiplier, unit ]  Documentation p. 78 */
 				[ /^.0000(...)$/, "Energie",                             (n) => ({exp10: n-3 }),     "Wh"                ], /* Energy */
@@ -418,8 +420,8 @@ export function parseMbusTelegram(tel) {
 					[ /^.0001101()$/, "Hardware Versionsnummer",         null,                       null                ],   /* Hardware version # */
 					[ /^.0001110()$/, "Firmware Versionsnummer",         null,                       null                ],   /* Firmware version # */
 					[ /^.0001111()$/, "Software Versionsnummer",         null,                       null                ],   /* Software version # */
-					[ /^.0010000()$/, "Kundenort",                       null,                       null                ],   /* Customer location */
-					[ /^.0010001()$/, "Kunde",                           null,                       null                ],   /* Customer */
+					[ /^.0010000()$/, "Kundenort",                       getString,                  null                ],   /* Customer location */
+					[ /^.0010001()$/, "Kunde",                           getString,                  null                ],   /* Customer */
 					[ /^.0010010()$/, "Zugriffscode User",               null,                       null                ],   /* Access Code User */
 					[ /^.0010011()$/, "Zugriffscode Operator",           null,                       null                ],   /* Access Code Operator */
 					[ /^.0010100()$/, "Zugriffscode System Operator",    null,                       null                ],   /* Access Code System Operator */
