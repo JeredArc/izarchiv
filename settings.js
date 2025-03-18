@@ -17,7 +17,8 @@ export const ftpconfig = {
 export const webserver = {
 	enabled: true,
 	port: 3000,
-	host: '127.0.0.1'
+	// host: '127.0.0.1',
+	host: '0.0.0.0'
 };
 
 export const defaultLocale = "de-AT";

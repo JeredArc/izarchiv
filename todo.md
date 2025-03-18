@@ -21,3 +21,9 @@
 - [ ] reducing of values
 
 - [ ] timezone handling: telegram times are timezone-less and therefore stored and displayed as utc. however, automatically inserted timestamps are displayed as utc as well, meaning they do not show the local time
+
+- [ ] source import
+
+- [ ] records export
+
+- [ ] charts

@@ -1,14 +1,21 @@
-<div class="records-page">
+<div class="list-page">
 	<h2>Messwerte</h2>
 	
-	<div class="records-info">
-		<p>Zeige <%= records.length %> von <%= pagination.total %> Messwerten</p>
+	<!-- Control buttons -->
+	<div class="list-controls">
+		<div class="list-info">
+			<p>Zeige <%= records.length %> von <%= pagination.total %> Messwerten</p>
+		</div>
+		<div class="control-buttons">
+			<button type="button" id="columns-button" class="control-button">Spaltenauswahl</button>
+			<button type="button" id="filter-button" class="control-button">Filtern</button>
+		</div>
 	</div>
 	
-	<!-- Column Selection UI -->
-	<div class="column-selection">
+	<!-- Column Selection Overlay Panel -->
+	<div id="columns-panel" class="overlay-panel">
 		<h3>Spaltenauswahl</h3>
-		<form action="/records" method="GET">
+		<form action="/records" method="GET" id="columns-form">
 			<!-- Preserve existing query parameters -->
 			<input type="hidden" name="page" value="<%= pagination.currentPage %>">
 			<input type="hidden" name="limit" value="<%= pagination.limit %>">
@@ -28,12 +35,15 @@
 			</div>
 			
 			<input type="hidden" name="columns" id="columns-param" value="">
-			<button type="submit">Anwenden</button>
+			<div class="panel-actions">
+				<button type="button" class="cancel">Abbrechen</button>
+				<button type="submit">Anwenden</button>
+			</div>
 		</form>
 	</div>
 	
-	<!-- Filter UI -->
-	<div class="filter-selection">
+	<!-- Filter Overlay Panel -->
+	<div id="filter-panel" class="overlay-panel">
 		<h3>Filter</h3>
 		<form action="/records" method="GET" id="filter-form">
 			<!-- Preserve existing query parameters -->
@@ -81,64 +91,75 @@
 			
 			<div class="filter-actions">
 				<button type="button" id="add-filter">Filter hinzufügen</button>
-				<button type="submit">Anwenden</button>
+			</div>
+			
+			<div class="panel-actions">
 				<% if (filters && filters.length > 0) { %>
 					<a href="/records?columns=<%= getColumnQueryParam().replace('&columns=', '') %>" class="clear-filters">Filter zurücksetzen</a>
 				<% } %>
+				<button type="button" class="cancel">Abbrechen</button>
+				<button type="submit">Anwenden</button>
 			</div>
 		</form>
 	</div>
 	
-	<table>
-		<thead>
-			<tr>
-				<!-- ID column is always displayed -->
-				<th>#</th>
-				<!-- Dynamic columns -->
-				<% columns.selected.forEach(column => { %>
-					<th><%= columnCaption(column) %></th>
-				<% }); %>
-			</tr>
-		</thead>
-		<tbody>
-			<% records.forEach(record => { %>
+	<div class="table-container">
+		<table class="list-table">
+			<thead>
 				<tr>
 					<!-- ID column is always displayed -->
-					<td><a href="/record/<%= record.id %>"><%= record.id %></a></td>
+					<th><div class="th-content">#</div></th>
 					<!-- Dynamic columns -->
-					<% columns.selected.forEach(column => {
-						let { value, link, classes } = record.columnOutput(column);
-						%>
-						<td class="<%= classes.join(' ') %>">
-							<% if (link) { %>
-								<a href="<%= link %>"><%= value %></a>
-							<% } else { %>
-								<%= value %>
-							<% } %>
-						</td>
+					<% columns.selected.forEach(column => { %>
+						<th><div class="th-content"><%= columnCaption(column) %></div></th>
 					<% }); %>
 				</tr>
-			<% }); %>
-		</tbody>
-	</table>
+			</thead>
+			<tbody>
+				<% records.forEach(record => { %>
+					<tr>
+						<!-- ID column is always displayed -->
+						<td><a href="/record/<%= record.id %>"><%= record.id %></a></td>
+						<!-- Dynamic columns -->
+						<% columns.selected.forEach(column => {
+							let { value, link, classes } = record.columnOutput(column);
+							%>
+							<td class="<%= classes.join(' ') %>"><span>
+								<% if (link) { %>
+									<a href="<%= link %>"><%= value %></a>
+								<% } else { %>
+									<%= value %>
+								<% } %>
+							</span></td>
+						<% }); %>
+					</tr>
+				<% }); %>
+			</tbody>
+		</table>
+	</div>
 
-	<% if (pagination.totalPages > 1) { %>
-		<div class="pagination">
-			<% if (pagination.currentPage > 1) { %>
-				<a href="/records?page=1<%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link">&laquo;</a>
-				<a href="/records?page=<%= pagination.currentPage - 1 %><%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link">&lsaquo;</a>
-			<% } %>
-			
-			<% for (let i = Math.max(1, pagination.currentPage - 2); i <= Math.min(pagination.totalPages, pagination.currentPage + 2); i++) { %>
-				<a href="/records?page=<%= i %><%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link <%= i === pagination.currentPage ? 'active' : '' %>"><%= i %></a>
-			<% } %>
-			
-			<% if (pagination.currentPage < pagination.totalPages) { %>
-				<a href="/records?page=<%= pagination.currentPage + 1 %><%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link">&rsaquo;</a>
-				<a href="/records?page=<%= pagination.totalPages %><%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link">&raquo;</a>
-			<% } %>
-		</div>
-	<% } %>
+	<!-- Bottom bar with info and pagination -->
+	<div class="list-bottom-bar">
+		<% if (pagination.totalPages > 1) { %>
+			<div class="pagination">
+				<% if (pagination.currentPage > 1) { %>
+					<a href="/records?page=1<%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link">&laquo;</a>
+					<a href="/records?page=<%= pagination.currentPage - 1 %><%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link">&lsaquo;</a>
+				<% } %>
+				
+				<% for (let i = Math.max(1, pagination.currentPage - 2); i <= Math.min(pagination.totalPages, pagination.currentPage + 2); i++) { %>
+					<a href="/records?page=<%= i %><%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link <%= i === pagination.currentPage ? 'active' : '' %>"><%= i %></a>
+				<% } %>
+				
+				<% if (pagination.currentPage < pagination.totalPages) { %>
+					<a href="/records?page=<%= pagination.currentPage + 1 %><%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link">&rsaquo;</a>
+					<a href="/records?page=<%= pagination.totalPages %><%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link">&raquo;</a>
+				<% } %>
+			</div>
+		<% } else { %>
+			<div class="pagination"></div> <!-- Empty div to maintain flex layout -->
+		<% } %>
+	</div>
 </div>
 
 <script>
@@ -171,12 +192,102 @@
 	}
 	
 	// Add event listener to the form to update the columns parameter before submission
-	document.querySelector('.column-selection form').addEventListener('submit', function(e) {
+	document.querySelector('#columns-form').addEventListener('submit', function(e) {
 		updateColumnSelection();
 	});
 	
-	// Filter functionality
+	// Overlay panel functionality
 	document.addEventListener('DOMContentLoaded', function() {
+		// Column selection panel
+		const columnsButton = document.getElementById('columns-button');
+		const columnsPanel = document.getElementById('columns-panel');
+		
+		// Function to restore checkbox states based on current URL parameters
+		function restoreCheckboxStatesFromURL() {
+			// Get the current columns parameter from the URL
+			const urlParams = new URLSearchParams(window.location.search);
+			const columnsParam = urlParams.get('columns');
+			
+			// Default: all checkboxes should be checked unless specified otherwise
+			let columnsToShow = [];
+			let columnsToHide = [];
+			
+			if (columnsParam) {
+				if (columnsParam.startsWith('-')) {
+					// "-" prefix means hide these columns, show all others
+					columnsToHide = columnsParam.substring(1).split(',');
+				} else {
+					// No prefix means show only these columns
+					columnsToShow = columnsParam.split(',');
+				}
+			}
+			
+			// Update all checkboxes based on the URL parameters
+			document.querySelectorAll('.column-checkbox input').forEach(input => {
+				const columnName = input.id.replace('col-', '');
+				const isDefaultDeselected = input.hasAttribute('data-default-deselected');
+				
+				if (columnsParam) {
+					if (columnsParam.startsWith('-')) {
+						// If using "-" prefix, check all except those in columnsToHide
+						input.checked = !columnsToHide.includes(columnName);
+					} else {
+						// Otherwise, only check those in columnsToShow
+						input.checked = columnsToShow.includes(columnName);
+					}
+				} else {
+					// No columns parameter: check all except default deselected
+					input.checked = !isDefaultDeselected;
+				}
+			});
+		}
+		
+		columnsButton.addEventListener('click', function() {
+			// Restore checkbox states from URL before showing the panel
+			restoreCheckboxStatesFromURL();
+			
+			columnsPanel.classList.add('active');
+			filterPanel.classList.remove('active'); // Close other panel
+		});
+		
+		// Filter panel
+		const filterButton = document.getElementById('filter-button');
+		const filterPanel = document.getElementById('filter-panel');
+		
+		filterButton.addEventListener('click', function() {
+			filterPanel.classList.add('active');
+			columnsPanel.classList.remove('active'); // Close other panel
+		});
+		
+		// Close panels when clicking cancel buttons
+		document.querySelectorAll('.panel-actions .cancel').forEach(button => {
+			button.addEventListener('click', function() {
+				// If this is the cancel button in the columns panel, restore checkbox states from URL
+				if (button.closest('#columns-panel')) {
+					restoreCheckboxStatesFromURL();
+				}
+				
+				columnsPanel.classList.remove('active');
+				filterPanel.classList.remove('active');
+			});
+		});
+		
+		// Close panels when clicking outside
+		document.addEventListener('click', function(e) {
+			if (!columnsPanel.contains(e.target) && e.target !== columnsButton && 
+				!filterPanel.contains(e.target) && e.target !== filterButton) {
+				
+				// If columns panel is active, restore checkbox states from URL
+				if (columnsPanel.classList.contains('active')) {
+					restoreCheckboxStatesFromURL();
+				}
+				
+				columnsPanel.classList.remove('active');
+				filterPanel.classList.remove('active');
+			}
+		});
+		
+		// Filter functionality
 		const addFilterBtn = document.getElementById('add-filter');
 		const filterConditions = document.getElementById('filter-conditions');
 		
@@ -207,6 +318,22 @@
 					button.closest('.filter-condition').querySelector('.filter-value').value = '';
 				}
 			});
+		});
+		
+		// Fix table column widths to prevent flip-flop effect when headers expand
+		const fixTableColumnWidths = function() {
+			const table = document.querySelector('.list-table');
+			if (!table) return;
+			
+			// With absolutely positioned header content, we don't need to 
+			// manually adjust column widths anymore. The browser will handle it naturally.
+			// This function is kept as a placeholder in case we need to add any table
+			// initialization logic in the future.
+		};
+		
+		// Run once when the page loads
+		window.addEventListener('load', function() {
+			// No need to call fixTableColumnWidths anymore
 		});
 	});
 </script>

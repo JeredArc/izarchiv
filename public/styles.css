@@ -6,7 +6,7 @@
 	--light-color: #ecf0f1;
 	--dark-color: #34495e;
 	--text-color: #333;
-	--border-radius: 4px;
+	--border-radius: 3px;
 	--unknown-color: #999;
 }
 
@@ -16,35 +16,59 @@
 	padding: 0;
 }
 
+html {
+	font-size: 12px;
+}
+
 body {
 	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 	line-height: 1.6;
 	color: var(--text-color);
 	background-color: #f5f5f5;
+	font-size: 12px;
+	min-height: 100vh;
+	margin: 0;
+	padding-top: 80px; /* Space for fixed header */
+	padding-bottom: 60px; /* Space for fixed footer - increased */
+}
+body.list { /* use a flex layout taking up all available space */
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 }
 
 .container {
 	width: 100%;
 	max-width: 1200px;
 	margin: 0 auto;
-	padding: 0 15px;
+	padding: 0 12px;
 }
 
 /* Header */
 header {
 	background-color: var(--primary-color);
 	color: white;
-	padding: 1rem 0;
-	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+	padding: 0.75rem 0;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 100;
+}
+body.list header {
+	position: static;
+	flex: 0;
 }
 
 header h1 {
 	margin: 0;
-	font-size: 1.8rem;
+	font-size: 1.4rem;
 }
 
 header nav {
-	margin-top: 0.5rem;
+	margin-top: 0.4rem;
 }
 
 header nav ul {
@@ -53,7 +77,7 @@ header nav ul {
 }
 
 header nav ul li {
-	margin-right: 1.5rem;
+	margin-right: 1.2rem;
 }
 
 header nav ul li a {
@@ -61,7 +85,7 @@ header nav ul li a {
 	text-decoration: none;
 	font-weight: 500;
 	transition: color 0.3s;
-	padding: 0.5rem 1rem;
+	padding: 0.4rem 0.8rem;
 	border-radius: var(--border-radius);
 }
 
@@ -77,49 +101,263 @@ header nav ul li a.active {
 
 /* Main content */
 main {
-	padding: 2rem 0;
-	min-height: calc(100vh - 140px);
+	padding: 1.5rem 0;
+}
+body.list main {
+	flex: 1;
 }
 
 /* Footer */
 footer {
 	background-color: var(--primary-color);
 	color: white;
-	padding: 1rem 0;
+	padding: 0.75rem 0;
 	text-align: center;
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 100;
+}
+body.list footer {
+	position: static;
+	flex: 0;
+}
+
+h2 {
+	margin-top: 0.5rem;
 }
 
 /* Dashboard */
-.dashboard h2, .records-page h2, .record-detail h2 {
-	margin-bottom: 1.5rem;
+.dashboard h2, .list-page h2, .record-detail h2 {
+	margin-bottom: 1.2rem;
 	color: var(--primary-color);
 	border-bottom: 2px solid var(--secondary-color);
-	padding-bottom: 0.5rem;
+	padding-bottom: 0.4rem;
+	font-size: 1.5rem;
+}
+
+/* Records page with flexbox layout */
+.list-page {
+	display: flex;
+	flex-direction: column;
+}
+
+.list-controls {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 1rem;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.list-info {
+	display: flex;
+	align-items: center;
+}
+
+.control-buttons {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+}
+
+.list-controls .control-button {
+	background-color: var(--secondary-color);
+	color: white;
+	border: none;
+	padding: 0.4rem 0.8rem;
+	border-radius: var(--border-radius);
+	cursor: pointer;
+	font-weight: bold;
+	font-size: 0.9rem;
+}
+
+.list-controls .control-button:hover {
+	background-color: var(--primary-color);
+}
+
+.list-page .table-container {
+	overflow: auto;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	max-height: calc(100vh - 250px); /* Adjusted for fixed header/footer */
+}
+
+/* Table container - general */
+.table-container {
+	width: 100%;
+	overflow-x: auto;
+	position: relative;
+}
+
+/* Table container in record-detail page */
+.record-detail .table-container {
+	max-height: none; /* Remove height restriction */
+	overflow-y: visible; /* Allow content to flow naturally */
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	margin-bottom: 1rem;
+	width: 100%;
+}
+
+/* Overlay panels */
+.overlay-panel {
+	position: fixed; /* Changed from absolute to fixed */
+	top: 100px; /* Adjusted to account for fixed header */
+	right: 1rem;
+	background-color: white;
+	border-radius: var(--border-radius);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	padding: 1rem;
+	z-index: 99; /* Just below header z-index */
+	width: 80%;
+	max-width: 600px;
+	display: none; /* Hidden by default */
+}
+
+.overlay-panel.active {
+	display: block;
+}
+
+.overlay-panel h3 {
+	margin-bottom: 0.8rem;
+	color: var(--primary-color);
+	font-size: 1.1rem;
+}
+
+.overlay-panel .panel-actions {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 1rem;
+}
+
+.overlay-panel .panel-actions button {
+	background-color: var(--secondary-color);
+	color: white;
+	border: none;
+	padding: 0.4rem 0.8rem;
+	border-radius: var(--border-radius);
+	cursor: pointer;
+	font-weight: bold;
+	margin-left: 0.5rem;
+}
+
+.overlay-panel .panel-actions button.cancel {
+	background-color: #95a5a6;
+}
+
+.overlay-panel .panel-actions button:hover {
+	background-color: var(--primary-color);
+}
+
+/* Bottom info bar */
+.list-bottom-bar {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin-top: 0.6rem;
+	margin-bottom: 0.6rem;
+	flex-shrink: 0;
+}
+
+.list-info {
+	color: var(--dark-color);
+	font-size: 0.9rem;
+	margin: 0;
+}
+
+.list-page .pagination {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 0.4rem;
+	margin: 0; /* Remove margin */
+}
+
+/* Sticky table headers with max height and hover expansion */
+.table-container thead th {
+	position: sticky;
+	top: 0; /* Stick to the top of the container */
+	z-index: 10;
+	background-color: var(--primary-color);
+	box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
+	height: 2.8em; /* Fixed height for th */
+	overflow: visible; /* Allow overflow for the absolute positioned content */
+	padding: 0; /* Remove padding from th */
+	white-space: nowrap; /* Prevent wrapping */
+}
+
+/* Override sticky positioning for record-detail page tables */
+.record-detail .table-container thead th {
+	position: static; /* Remove sticky positioning */
+	box-shadow: none; /* Remove box shadow */
+}
+
+.table-container thead th .th-content {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	padding: 0.6rem; /* Add padding to inner div */
+	white-space: nowrap; /* Prevent wrapping */
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: white;
+	transition: all 0.2s ease;
+}
+
+/* Override absolute positioning for record-detail page tables */
+.record-detail .table-container thead th .th-content {
+	position: static; /* Remove absolute positioning */
+	padding: 0.6rem; /* Keep the padding */
+}
+
+.table-container thead th:hover {
+	overflow: visible;
+	z-index: 11; /* Ensure it appears above other headers */
+}
+.table-container thead th:hover .th-content {
+	visibility: visible;
+	background-color: var(--primary-color);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+	border-radius: 0 0 var(--border-radius) var(--border-radius);
+	height: max-content; /* Allow height to grow */
+	max-height: none; /* Show full content on hover */
+	min-width: 100%; /* Ensure it's at least as wide as the th */
+	width: max-content;
+	white-space: normal; /* Allow wrapping in expanded state */
+	overflow: visible; /* Show all content */
+	outline: 1px solid var(--light-color);;
+	pointer-events: none;
 }
 
 .stats-cards {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 1rem;
-	margin-bottom: 2rem;
+	gap: 0.8rem;
+	margin-bottom: 1.5rem;
 }
 
 .card {
 	background-color: white;
 	border-radius: var(--border-radius);
-	padding: 1.5rem;
-	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+	padding: 1.2rem;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	flex: 1;
-	min-width: 200px;
+	min-width: 150px;
 }
 
 .card h3 {
-	margin-bottom: 0.5rem;
+	margin-bottom: 0.4rem;
 	color: var(--dark-color);
+	font-size: 1.1rem;
 }
 
 .card .stat {
-	font-size: 2rem;
+	font-size: 1.5rem;
 	font-weight: bold;
 	color: var(--secondary-color);
 }
@@ -128,15 +366,26 @@ footer {
 table {
 	width: 100%;
 	border-collapse: collapse;
-	margin-bottom: 1.5rem;
+	margin-bottom: 1.2rem;
 	background-color: white;
-	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* For very wide tables in the delta section */
+.record-detail .record-delta {
+	min-width: 1000px; /* Ensure wide tables have minimum width */
+}
+
+/* Remove bottom margin from tables inside containers */
+.table-container table {
+	margin-bottom: 0;
 }
 
 th, td {
-	padding: 0.75rem;
+	padding: 0.6rem;
 	text-align: left;
 	border-bottom: 1px solid #ddd;
+	font-size: 0.9rem;
 }
 
 th {
@@ -150,56 +399,82 @@ tr:hover {
 
 /* Record detail */
 .record-detail {
-	max-width: 1200px;
-	margin: 0 auto;
+	padding: 0 1rem;
+}
+
+/* Record detail header */
+.record-detail h2 {
+	background-color: #f5f5f5;
+	padding-top: 0.5rem;
+	margin-top: 0;
+	margin-bottom: 1.2rem;
+}
+
+/* Record detail footer */
+.record-detail .actions {
+	background-color: #f5f5f5;
+	padding: 0.8rem 0;
+	margin-top: 0.8rem;
+	margin-bottom: 1rem; /* Normal margin */
+}
+
+.record-detail .record-section {
+	margin-bottom: 0.8rem;
+	background-color: white;
+	border-radius: var(--border-radius);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	overflow: hidden;
+}
+
+/* When a collapsible section is expanded, it can grow */
+.record-detail .record-section.collapsible:not(.collapsed) {
+	display: flex;
+	flex-direction: column;
+}
+
+.record-detail .record-section.collapsible:not(.collapsed) .collapsible-content {
+	overflow: visible; /* Let content flow naturally */
 }
 
 .record-meta {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-	gap: 1rem;
-	margin-bottom: 1rem;
+	grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
+	gap: 0.8rem;
+	margin-bottom: 0.8rem;
 }
 
 .meta-item {
 	display: flex;
 	flex-direction: column;
 	background-color: white;
-	padding: 0.75rem;
+	padding: 0.6rem;
 	border-radius: var(--border-radius);
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .meta-label {
 	font-weight: bold;
 	color: var(--dark-color);
-	font-size: 0.9rem;
-	margin-bottom: 0.25rem;
+	font-size: 0.8rem;
+	margin-bottom: 0.2rem;
 }
 
 .meta-value {
-	font-size: 1.1rem;
-}
-
-.record-section {
-	margin-bottom: 1rem;
-	background-color: white;
-	border-radius: var(--border-radius);
-	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-	overflow: hidden;
+	font-size: 0.9rem;
 }
 
 .record-section h3 {
 	margin: 0;
-	padding: 1rem;
+	padding: 0.8rem;
 	background-color: var(--light-color);
 	border-bottom: 1px solid #ddd;
 	color: var(--dark-color);
-	font-size: 1.1rem;
+	font-size: 1rem;
 }
 
 .record-section .collapsible-content {
-	padding: 1rem;
+	padding: 0.8rem;
+	transition: max-height 0.3s ease, padding 0.3s ease;
 }
 
 .record-section table {
@@ -211,29 +486,31 @@ tr:hover {
 	color: #888;
 	font-style: italic;
 	text-align: center;
-	padding: 1rem;
+	padding: 0.8rem;
+	font-size: 0.9rem;
 }
 
 .delta-info {
-	margin-bottom: 1rem;
+	margin-bottom: 0.8rem;
 	font-style: italic;
 	color: #666;
+	font-size: 0.9rem;
 }
 
 /* Collapsible sections */
 .collapsible h3 {
 	cursor: pointer;
 	position: relative;
-	padding-right: 20px;
+	padding-right: 30px; /* Space for the arrow */
 }
 
 .collapsible h3::after {
 	content: '▼';
 	position: absolute;
-	right: 0;
+	right: 12px; /* Right padding for the arrow */
 	top: 50%;
 	transform: translateY(-50%);
-	font-size: 0.8em;
+	font-size: 0.7rem;
 	transition: transform 0.2s ease;
 }
 
@@ -242,22 +519,25 @@ tr:hover {
 }
 
 .collapsible .collapsible-content {
-	max-height: 1000px;
-	overflow: hidden;
-	transition: max-height 0.3s ease;
+	max-height: none; /* Prevent clipping */
+	overflow: visible;
+	transition: max-height 0.3s ease, padding 0.3s ease;
 }
 
 .collapsible.collapsed .collapsible-content {
-	max-height: 0;
+	max-height: 0 !important; /* Ensure it's always 0 when collapsed */
+	overflow: hidden;
+	padding-top: 0 !important;
+	padding-bottom: 0 !important;
 }
 
 pre {
 	background-color: #f5f5f5;
-	padding: 1rem;
+	padding: 0.8rem;
 	overflow-x: auto;
 	border-radius: var(--border-radius);
 	font-family: monospace;
-	font-size: 0.9rem;
+	font-size: 0.85rem;
 }
 
 /* Buttons */
@@ -265,10 +545,11 @@ pre {
 	display: inline-block;
 	background-color: var(--secondary-color);
 	color: white;
-	padding: 0.5rem 1rem;
+	padding: 0.4rem 0.8rem;
 	border-radius: var(--border-radius);
 	text-decoration: none;
 	transition: background-color 0.3s;
+	font-size: 0.9rem;
 }
 
 .btn:hover {
@@ -276,7 +557,7 @@ pre {
 }
 
 .actions {
-	margin-top: 1rem;
+	margin-top: 0.8rem;
 }
 
 /* Responsive */
@@ -292,32 +573,28 @@ pre {
 }
 
 /* Pagination */
-.records-info {
-	margin: 1rem 0;
-	color: var(--dark-color);
-}
-
 .pagination {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	margin: 2rem 0;
-	gap: 0.5rem;
+	margin: 1.5rem 0;
+	gap: 0.4rem;
 }
 
 .pagination-link {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 2.5rem;
-	height: 2.5rem;
-	padding: 0 0.75rem;
+	min-width: 2rem;
+	height: 2rem;
+	padding: 0 0.6rem;
 	border-radius: var(--border-radius);
 	background-color: white;
 	color: var(--dark-color);
 	text-decoration: none;
 	border: 1px solid #ddd;
 	transition: all 0.2s ease;
+	font-size: 0.9rem;
 }
 
 .pagination-link:hover {
@@ -334,64 +611,73 @@ pre {
 
 /* Column Selection UI */
 .column-selection {
-	margin: 20px 0;
-	padding: 15px;
+	margin: 15px 0;
+	padding: 12px;
 	background-color: var(--light-color);
 	border-radius: var(--border-radius);
-	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .column-selection h3 {
-	margin-bottom: 10px;
+	margin-bottom: 8px;
 	color: var(--primary-color);
-	font-size: 1.2rem;
+	font-size: 1.1rem;
 }
 
 .column-checkboxes {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 10px;
-	margin-bottom: 15px;
+	gap: 8px;
+	margin-bottom: 12px;
 }
 
 .column-checkbox {
 	display: flex;
 	align-items: center;
 	background-color: white;
-	padding: 5px 10px;
+	padding: 4px 8px;
 	border-radius: var(--border-radius);
 	border: 1px solid #ddd;
 }
 
 .column-checkbox input[type="checkbox"] {
-	margin-right: 5px;
+	margin-right: 4px;
 	cursor: pointer;
 }
 
 .column-checkbox label {
 	cursor: pointer;
-	font-size: 0.9rem;
+	font-size: 0.85rem;
 }
 
 .column-selection button {
 	background-color: var(--secondary-color);
 	color: white;
 	border: none;
-	padding: 8px 15px;
+	padding: 6px 12px;
 	border-radius: var(--border-radius);
 	cursor: pointer;
 	font-weight: bold;
 	transition: background-color 0.2s;
+	font-size: 0.9rem;
 }
 
 .column-selection button:hover {
 	background-color: #2980b9;
 } 
 
-/* Table number formatting */
-td.number {
+table.list-table>tbody>tr>td {
+	min-width: 4rem;
+}
+
+td.value:not(table.list-table>tbody>tr>td.value)>span, span.value>span {
+	display: inline-block;
+	min-width: 11rem;
 	text-align: right;
-	font-family: monospace;
+}
+
+table.list-table>tbody>tr>td.number {
+	text-align: right;
 }
 
 td.unknown {
@@ -400,10 +686,10 @@ td.unknown {
 
 /* Handle long values in table cells */
 td {
-	max-width: 300px;
+	max-width: 225px;
 	overflow-x: auto;
 	white-space: nowrap;
-	padding: 8px;
+	padding: 6px;
 }
 
 /* For cells with potentially long content */
@@ -411,7 +697,7 @@ td.long-text {
 	position: relative;
 	overflow-x: auto;
 	white-space: nowrap;
-	padding-right: 16px; /* Extra padding for scrollbar */
+	padding-right: 12px; /* Extra padding for scrollbar */
 }
 
 /* Show a subtle indicator for scrollable content */
@@ -421,7 +707,7 @@ td.long-text:after {
 	right: 0;
 	top: 0;
 	bottom: 0;
-	width: 20px;
+	width: 15px;
 	background: linear-gradient(to right, transparent, var(--light-color));
 	pointer-events: none; /* Allow clicks to pass through */
 }
@@ -433,7 +719,7 @@ td pre {
 	white-space: pre;
 	margin: 0;
 	padding: 0;
-	font-size: 0.9rem;
+	font-size: 0.85rem;
 }
 
 /* Visual indicator for scrollable content */
@@ -443,7 +729,7 @@ td.long-text.is-scrollable::after {
 	top: 0;
 	right: 0;
 	height: 100%;
-	width: 15px;
+	width: 12px;
 	background: linear-gradient(to right, transparent, rgba(240, 240, 240, 0.9));
 	pointer-events: none;
 }
@@ -464,4 +750,95 @@ td.long-text pre {
 .json-content {
 	font-family: monospace;
 	white-space: pre;
+}
+
+/* Filter panel styles */
+.filter-condition {
+	display: flex;
+	align-items: center;
+	margin-bottom: 0.6rem;
+	gap: 0.5rem;
+}
+
+.filter-column, .filter-operator {
+	flex: 1;
+	padding: 0.4rem;
+	border: 1px solid #ddd;
+	border-radius: var(--border-radius);
+	font-size: 0.9rem;
+}
+
+.filter-value {
+	flex: 1.5;
+	padding: 0.4rem;
+	border: 1px solid #ddd;
+	border-radius: var(--border-radius);
+	font-size: 0.9rem;
+}
+
+.remove-filter {
+	background-color: #e74c3c;
+	color: white;
+	border: none;
+	padding: 0.3rem 0.5rem;
+	border-radius: var(--border-radius);
+	cursor: pointer;
+	font-size: 0.8rem;
+}
+
+.filter-actions {
+	margin-top: 0.8rem;
+}
+
+#add-filter {
+	background-color: var(--secondary-color);
+	color: white;
+	border: none;
+	padding: 0.4rem 0.8rem;
+	border-radius: var(--border-radius);
+	cursor: pointer;
+	font-size: 0.9rem;
+}
+
+.clear-filters {
+	color: #e74c3c;
+	text-decoration: none;
+	margin-right: auto;
+	font-size: 0.9rem;
+}
+
+/* Column selection panel styles */
+.column-checkboxes {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-bottom: 1rem;
+}
+
+.column-checkbox {
+	display: flex;
+	align-items: center;
+	background-color: var(--light-color);
+	padding: 0.3rem 0.6rem;
+	border-radius: var(--border-radius);
+	border: 1px solid #ddd;
+	font-size: 0.9rem;
+}
+
+.column-checkbox input[type="checkbox"] {
+	margin-right: 0.4rem;
+	cursor: pointer;
+}
+
+/* Override hover behavior for record-detail page tables */
+.record-detail .table-container thead th:hover {
+	overflow: visible;
+	z-index: auto;
+}
+
+.record-detail .table-container thead th:hover .th-content {
+	position: static;
+	background-color: var(--primary-color);
+	color: white;
+	white-space: normal;
 }

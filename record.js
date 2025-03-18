@@ -88,7 +88,7 @@ export class Record {
 		let value = raw;
 		if(column in columnFormatters) value = columnFormatters[column](value, this);
 		let link = this.columnLink(column);
-		let classes = [];
+		let classes = ['value'];
 		if(typeof value === 'number') {
 			classes.push('number');
 			value = formatNumber(value, column);

@@ -48,6 +48,7 @@ fastify.register(FastifyView, {
 		// Global template variables
 		title: 'IZARchiv',
 		path: '/',
+		bodyclass: '',
 		formatDate,
 		formatNumber,
 		defaultUiDateFormat,
@@ -71,7 +72,7 @@ let db;
 /* dashboard routes */
 fastify.get('/', async (request, reply) => {
 	const { records, total } = await getRecords(db, 20);
-	return reply.view('index', { records, total, path: '/' });
+	return reply.view('index', { records, total, path: '/', bodyclass: 'dashboard' });
 });
 
 /* devices routes */
@@ -91,7 +92,8 @@ fastify.get('/devices', async (request, reply) => {
 			limit,
 			total
 		},
-		path: '/devices'
+		path: '/devices',
+		bodyclass: 'list',
 	});
 });
 
@@ -101,7 +103,11 @@ fastify.get('/device/:id', async (request, reply) => {
 	if (!device) {
 		return reply.code(404).send({ error: 'Device not found' });
 	}
-	return reply.view('device-detail', { device, path: '/devices' });
+	return reply.view('device-detail', {
+		device,
+		path: '/devices',
+		bodyclass: 'detail',
+	});
 });
 
 /* sources routes */
@@ -121,7 +127,8 @@ fastify.get('/sources', async (request, reply) => {
 			limit,
 			total
 		},
-		path: '/sources'
+		path: '/sources',
+		bodyclass: 'list',
 	});
 });
 
@@ -131,7 +138,11 @@ fastify.get('/source/:id', async (request, reply) => {
 	if (!source) {
 		return reply.code(404).send({ error: 'Source not found' });
 	}
-	return reply.view('source-detail', { source, path: '/sources' });
+	return reply.view('source-detail', {
+		source,
+		path: '/sources',
+		bodyclass: 'detail',
+	});
 });
 
 
@@ -217,7 +228,8 @@ fastify.get('/records', async (request, reply) => {
 			defaultDeselected: defaultDeselectedColumns,
 		},
 		filters,
-		path: '/records'
+		path: '/records',
+		bodyclass: 'list',
 	});
 });
 
@@ -230,7 +242,9 @@ fastify.get('/record/:id', async (request, reply) => {
 	
 	return reply.view('record-detail', { 
 		record, 
-		path: '/records'
+		path: '/records',
+		backlink: request.headers.referer?.includes('/records') ? request.headers.referer : '/records',
+		bodyclass: 'detail',
 	});
 });
 
