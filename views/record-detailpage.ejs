@@ -99,10 +99,10 @@
 											<%= formatNumber(deltaInfo.valueDiff, deltaColumns[column]) %>
 										</td>
 										<td>
-											<%= formatDate(deltaInfo.prevTime, defaultUiDateFormat) %>
+											<%= formatDate(deltaInfo.prevTime, defaultUiDateFormat.replace(/(\s*\()?rrr(\))?/g, "")) %>
 										</td>
 										<td>
-											<%= formatDate(deltaInfo.thisTime, defaultUiDateFormat) %>
+											<%= formatDate(deltaInfo.thisTime, defaultUiDateFormat.replace(/(\s*\()?rrr(\))?/g, "")) %>
 										</td>
 										<td>
 											<%= formatNumber(Math.round(deltaInfo.timeDiff / 1000)) %> s

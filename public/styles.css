@@ -374,6 +374,9 @@ th {
 tr:hover {
 	background-color: var(--background-color);
 }
+tr:hover:not(:has(a:hover))>td:first-child>a {
+	color: var(--secondary-color) !important;
+}
 
 /* Detail page top actions */
 .detail-page .top-actions {
@@ -423,6 +426,10 @@ tr:hover {
 
 .summary-item:hover {
 	background-color: var(--background-color);
+}
+
+.summary-item:hover a {
+	color: var(--secondary-color) !important;
 }
 
 .summary-label {
@@ -512,6 +519,13 @@ button, .btn {
 
 button:hover,.btn:hover {
 	background-color: var(--primary-color);
+}
+
+a:not(.btn):not(header a), a:not(.btn):not(header a):visited {
+	color: var(--primary-color);
+}
+a:not(.btn):not(header a):hover, a:not(.btn):not(header a):focus {
+	color: var(--secondary-color);
 }
 
 
