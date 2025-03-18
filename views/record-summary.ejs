@@ -1,0 +1,19 @@
+<div class="detail-summary">
+	<% [
+		colPreRecord + 'time', colPreRecord + 'deviceName', colPreRecord + 'sourceName',
+		...record.deviceOverviewColumns
+	].filter(column => typeof hideColumns === 'undefined' || !hideColumns.includes(column)).forEach(column => { 
+		let { value, link, classes, raw } = record.columnOutput(column);
+		%>
+		<div class="summary-item">
+			<span class="summary-label"><%= columnCaption(column) %>:</span>
+			<span class="summary-value <%= classes.join(' ') %>"><span>
+				<% if (link) { %>
+					<a href="<%= link %>"><%= value %></a>
+				<% } else { %>
+					<%= value %>
+				<% } %>
+			</span></span>
+		</div>
+	<% }); %>
+</div>

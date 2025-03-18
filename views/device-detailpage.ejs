@@ -1,0 +1,77 @@
+<div class="detail-page">
+	<div class="top-actions">
+		<a href="<%= backlink %>" class="btn">Zurück zur Übersicht</a>
+	</div>
+	<h2>Details zu Gerät #<%= device.id %></h2>
+	
+<%
+let columns = [
+	colPreDevice + 'address',
+	colPreDevice + 'name',
+	colPreDevice + 'description',
+	colPreDevice + 'recordCount',
+	colPreDevice + 'created_at',
+	colPreDevice + 'overview_columns',
+];
+%>
+	<div class="detail-section">
+		<h3>Übersicht</h3>
+		<div class="detail-summary">
+			<% columns.forEach(column => { %>
+				<% let { value, link, classes } = device.columnOutput(column); %>
+				<div class="summary-item">
+					<span class="summary-label"><%= columnCaption(column) %>:</span>
+					<span class="summary-value <%= classes.join(' ') %>"><span>
+						<% if (link) { %>
+							<a href="<%= link %>"><%= value %></a>
+						<% } else { %>
+							<%= value %>
+						<% } %>
+					</span></span>
+				</div>
+			<% }); %>
+		</div>
+	</div>
+		
+	<div class="detail-section">
+		<% if (device.newestRecord) { %>
+			<h3>Aktuellster Messwert   <a href="/record/<%= device.newestRecord.id %>" class="link-small">#<%= device.newestRecord.id %></a></h3>
+			<%- include("record-summary", { record: device.newestRecord, hideColumns: [colPreRecord + 'deviceName'] }) %>
+		<% } else { %>
+			<h3>Aktuellster Messwert</h3>
+			<p class="no-data">Kein Messwert gefunden</p>
+		<% } %>
+	</div>
+
+	<div class="detail-section">
+		<% if (device.recentRecord) { %>
+			<h3>Zuletzt hinzugefügter Messwert   <a href="/record/<%= device.recentRecord.id %>" class="link-small">#<%= device.recentRecord.id %></a></h3>
+			<%- include("record-summary", { record: device.recentRecord, hideColumns: [colPreRecord + 'deviceName'] }) %>
+		<% } else { %>
+			<h3>Zuletzt hinzugefügter Messwert</h3>
+			<p class="no-data">Kein Messwert gefunden</p>
+		<% } %>
+	</div>		
+			
+	<div class="detail-section collapsible">
+		<% if (device.newestRecords && device.newestRecords.length > 0) { %>
+			<h3>Aktuellste Messwerte  (<%= device.newestRecords.length %> von <%= device.recordCount %>)   <a href="/records?device=<%= device.id %>" class="link-small">Alle anzeigen</a></h3>
+			<div class="collapsible-content">
+				<%- include("records-table", {
+					records: device.newestRecords,
+					columns: {
+						selected: [
+							colPreRecord + 'time', colPreRecord + 'sourceName',
+							...new Set(device.newestRecords.flatMap(record => record.deviceOverviewColumns))
+						],
+					}
+				}) %>
+			</div>
+		<% } else { %>
+			<h3>Aktuellste Messwerte</h3>
+			<div class="collapsible-content">
+				<p class="no-data">Keine Messwerte gefunden</p>
+			</div>
+		<% } %>
+	</div>
+</div> 

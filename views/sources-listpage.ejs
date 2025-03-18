@@ -7,28 +7,44 @@
 			<p>Zeige <%= sources.length %> von <%= pagination.total %> Quellen</p>
 		</div>
 	</div>
-	
+
+<%
+let columns = [
+	colPreSource + 'created_at',
+	colPreSource + 'type',
+	colPreSource + 'filename',
+	colPreSource + 'rdysent',
+	colPreSource + 'recordCount',
+];
+%>
 	<div class="table-container">
 		<table class="list-table">
 			<thead>
 				<tr>
+					<!-- ID column is always displayed -->
 					<th><div class="th-content">#</div></th>
-					<th><div class="th-content">Zeit</div></th>
-					<th><div class="th-content">Typ</div></th>
-					<th><div class="th-content">Dateiname</div></th>
-					<th><div class="th-content">Als fertig (rdy) markiert</div></th>
-					<th><div class="th-content">Messwerte</div></th>
+					<!-- Dynamic columns -->
+					<% columns.forEach(column => { %>
+						<th><div class="th-content"><%= columnCaption(column) %></div></th>
+					<% }); %>
 				</tr>
 			</thead>
 			<tbody>
 				<% sources.forEach(source => { %>
 					<tr>
-						<td><a href="/source/<%= source.id %>"><%= source.id %></a></td>
-						<td class="timestamp"><span><%- formatDate(source.created_at, defaultUiDateFormat) %></span></td>
-						<td><span><%= source.type %></span></td>
-						<td><span><%= source.filename %></span></td>
-						<td><span><%= source.rdysent ? '✓' : '✗' %></span></td>
-						<td class="number"><span><%= source.recordCount %></span></td>
+						<!-- ID column is always displayed -->
+						<td><a href="<%= source.columnLink(colPreSource + 'id') %>"><%= source.id %></a></td>
+						<!-- Dynamic columns -->
+						<% columns.forEach(column => { %>
+							<% let { value, link, classes } = source.columnOutput(column, true); %>
+							<td class="<%= classes.join(' ') %>"><span>
+								<% if (link) { %>
+									<a href="<%= link %>"><%= value %></a>
+								<% } else { %>
+									<%= value %>
+								<% } %>
+							</span></td>
+						<% }); %>
 					</tr>
 				<% }); %>
 			</tbody>

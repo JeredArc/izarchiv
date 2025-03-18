@@ -1,5 +1,5 @@
-import { colPreRecord, colPreData, colPreDelta, colPreCustom, columnFormatters, columnLinks, multipliedColumns } from './settings.js';
-import { formatNumber } from './utils.js';
+import { colPreRecord, colPreData, colPreDelta, colPreCustom, columnFormatters, columnLinks, multipliedColumns, defaultUiDateFormat, defaultUiDateFormatList } from './settings.js';
+import { formatNumber, formatDate, formatDateRelative, applyColumnFormatter } from './utils.js';
 
 export class Record {
 	id = null;
@@ -76,26 +76,28 @@ export class Record {
 			return undefined;
 		}
 	}
+
 	columnLink(column) {
 		const prefix = column.charAt(0);
 		const fieldName = column.substring(1);
 		if(columnLinks[column]) return columnLinks[column](this);
-		if(prefix === colPreDelta && this.delta[fieldName]?.prevId) return `/record/${this.delta[fieldName].prevId}`;
+		if(prefix === colPreRecord && fieldName === 'id') return `/record/${this.id}`;
+		if(prefix === colPreRecord && this.delta[fieldName]?.prevId) return `/record/${this.delta[fieldName].prevId}`;
 		return undefined;
 	}
-	columnOutput(column) {
+
+	columnOutput(column, isList=false) {
 		let raw = this.columnValue(column);
 		let value = raw;
-		if(column in columnFormatters) value = columnFormatters[column](value, this);
-		let link = this.columnLink(column);
 		let classes = ['value'];
-		if(typeof value === 'number') {
+		let link = this.columnLink(column);
+		if(column in columnFormatters) {
+			value = applyColumnFormatter(column, value, isList, classes);
+		}
+		else if(typeof value === 'number') {
 			classes.push('number');
 			value = formatNumber(value, column);
-		// } else if(typeof value === 'string' && value.length > 50) {
-		// 	classes.push('long-text');
 		} else if(typeof value === 'object' && value !== null) {
-			// classes.push('long-text');
 			value = JSON.stringify(value);
 		} else if(value === undefined) {
 			classes.push('unknown');

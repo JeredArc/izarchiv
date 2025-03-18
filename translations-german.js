@@ -1,11 +1,26 @@
-import { colPreRecord, colPreData, colPreDelta, colPreCustom } from './settings.js';
+import { colPreRecord, colPreData, colPreDelta, colPreCustom, colPreDevice, colPreSource } from './settings.js';
 
 const columnTranslations = {
 	[colPreRecord + 'time']: 'Zeit',
 	[colPreRecord + 'deviceName']: 'Gerät',
 	[colPreRecord + 'sourceName']: 'Quelle',
-	[colPreRecord + 'data']: 'Werte',
-	[colPreRecord + 'delta']: 'Delta'
+	[colPreRecord + 'data']: 'Rohdaten',
+	[colPreRecord + 'delta']: 'Delta',
+
+	[colPreData + 'warnings']: 'Telegramm-Warnungen',
+
+	[colPreDevice + 'address']: 'Geräteadresse',
+	[colPreDevice + 'name']: 'Gerätename',
+	[colPreDevice + 'description']: 'Beschreibung',
+	[colPreDevice + 'recordCount']: 'Anzahl Messwerte',
+	[colPreDevice + 'created_at']: 'Erstellt am',
+	[colPreDevice + 'overview_columns']: 'Spalten für Messwert-Übersicht',
+	
+	[colPreSource + 'created_at']: 'Erstellt am',
+	[colPreSource + 'type']: 'Typ',
+	[colPreSource + 'filename']: 'Dateiname',
+	[colPreSource + 'rdysent']: 'Als fertig (rdy) markiert',
+	[colPreSource + 'recordCount']: 'Anzahl Messwerte',
 };
 
 export const columnCaption = (column) => {

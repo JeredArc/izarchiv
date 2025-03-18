@@ -1,0 +1,34 @@
+<div class="table-container">
+	<table class="list-table">
+		<thead>
+			<tr>
+				<!-- ID column is always displayed -->
+				<th><div class="th-content">#</div></th>
+				<!-- Dynamic columns -->
+				<% columns.selected.forEach(column => { %>
+					<th><div class="th-content"><%= columnCaption(column) %></div></th>
+				<% }); %>
+			</tr>
+		</thead>
+		<tbody>
+			<% records.forEach(record => { %>
+				<tr>
+					<!-- ID column is always displayed -->
+					<td><a href="<%= record.columnLink(colPreRecord + 'id') %>"><%= record.id %></a></td>
+					<!-- Dynamic columns -->
+					<% columns.selected.forEach(column => {
+						let { value, link, classes } = record.columnOutput(column, true);
+						%>
+						<td class="<%= classes.join(' ') %>"><span>
+							<% if (link) { %>
+								<a href="<%= link %>"><%= value %></a>
+							<% } else { %>
+								<%= value %>
+							<% } %>
+						</span></td>
+					<% }); %>
+				</tr>
+			<% }); %>
+		</tbody>
+	</table>
+</div>

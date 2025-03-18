@@ -4,7 +4,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	
 	// Initialize collapsible sections
 	initCollapsibleSections();
-	
+
+	// Row click navigation
+	initRowClickNavigation();
+
+
 	// Initialize list page functionality (for records, devices, and sources pages)
 	initListPageFunctionality();
 
@@ -16,7 +20,9 @@ function initCollapsibleSections() {
 	const collapsibles = document.querySelectorAll('.collapsible h3');
 	
 	collapsibles.forEach(header => {
-		header.addEventListener('click', function() {
+		header.addEventListener('click', function(e) {
+			if (e.target.tagName === 'A') return;
+
 			const section = this.parentElement;
 			section.classList.toggle('collapsed');
 			
@@ -74,9 +80,6 @@ function initListPageFunctionality() {
 		return;
 	}
 
-	// Row click navigation
-	initRowClickNavigation();
-	
 	// Column selection functionality
 	initColumnSelection();
 	

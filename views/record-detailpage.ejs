@@ -7,26 +7,7 @@
 	<!-- Overview Section -->
 	<div class="detail-section">
 		<h3>Übersicht</h3>
-		<div class="detail-summary">
-			
-			<% [
-				colPreRecord + 'time', colPreRecord + 'deviceName', colPreRecord + 'sourceName',
-				...record.deviceOverviewColumns
-			].forEach(column => { 
-				let { value, link, classes } = record.columnOutput(column);
-				%>
-				<div class="summary-item">
-					<span class="summary-label"><%= columnCaption(column) %>:</span>
-					<span class="summary-value <%= classes.join(' ') %>"><span>
-						<% if (link) { %>
-							<a href="<%= link %>"><%= value %></a>
-						<% } else { %>
-							<%= value %>
-						<% } %>
-					</span></span>
-				</div>
-			<% }); %>
-		</div>
+		<%- include("record-summary") %>
 	</div>
 	
 	<!-- Data Values Section -->
@@ -104,7 +85,7 @@
 											<%= value %>
 										<% } %>
 									</span></td>
-									<% if (deltaInfo.prevId) { console.log("deltaInfo", deltaInfo); %>
+									<% if (deltaInfo.prevId) { %>
 										<td>
 											<a href="/record/<%= deltaInfo.prevId %>">#<%= deltaInfo.prevId %></a>
 										</td>

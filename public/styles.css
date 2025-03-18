@@ -30,7 +30,7 @@ body {
 	background-color: var(--background-color);
 	min-height: 100vh;
 	margin: 0;
-	padding-top: 80px; /* Space for fixed header */
+	padding-top: 75px; /* Space for fixed header */
 	padding-bottom: 60px; /* Space for fixed footer - increased */
 }
 
@@ -107,6 +107,7 @@ main {
 	padding: 1.5rem 0;
 }
 body.list main {
+	margin-top: 10px;
 	flex: 1;
 }
 
@@ -131,7 +132,10 @@ h2 {
 	margin-top: 0.5rem;
 }
 
-/* Dashboard */
+a.link-small {
+	font-size: 0.83em; /* is 1rem with 1.2rem in h3 */
+}
+
 .dashboard h2, .list-page h2, .detail-page h2 {
 	margin-bottom: 1.2rem;
 	color: var(--primary-color);
@@ -332,6 +336,10 @@ h2 {
 	outline: 1px solid var(--light-color);;
 	pointer-events: none;
 }
+.table-container thead th:last-child:hover .th-content {
+	left: unset;
+	right: 0;
+}
 
 /* Tables */
 table {
@@ -511,7 +519,7 @@ table.list-table>tbody>tr>td {
 	min-width: 4rem;
 }
 
-td.value:not(table.list-table>tbody>tr>td.value)>span, span.value>span {
+td.value:not(table.list-table>tbody>tr>td.value)>span {
 	display: inline-block;
 	min-width: 11rem;
 	text-align: right;

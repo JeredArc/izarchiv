@@ -13,6 +13,8 @@ import {
 	colPreData,
 	colPreDelta,
 	colPreCustom,
+	colPreDevice,
+	colPreSource,
 	recordColumns,
 	defaultDeselectedColumns, 
 	deltaColumns,
@@ -20,7 +22,7 @@ import {
 	filterOperators,
 } from './settings.js';
 import { columnCaption, operatorCaption } from './translations-german.js';
-import { formatDate, formatNumber } from './utils.js';
+import { formatDate, formatDateRelative, formatNumber } from './utils.js';
 import ejs from 'ejs';
 
 // Convert ESM __dirname
@@ -50,6 +52,7 @@ fastify.register(FastifyView, {
 		path: '/',
 		bodyclass: '',
 		formatDate,
+		formatDateRelative,
 		formatNumber,
 		defaultUiDateFormat,
 		defaultLocale,
@@ -57,6 +60,8 @@ fastify.register(FastifyView, {
 		colPreData,
 		colPreDelta,
 		colPreCustom,
+		colPreDevice,
+		colPreSource,
 		deltaColumns,
 		multipliedColumns,
 		filterOperators,
@@ -71,8 +76,13 @@ let db;
 
 /* dashboard routes */
 fastify.get('/', async (request, reply) => {
-	const { records, total } = await getRecords(db, 20);
-	return reply.view('index', { records, total, path: '/', bodyclass: 'dashboard' });
+	const { records, total } = await getRecords(db, 10);
+	return reply.view('dashboard', {
+		records,
+		total,
+		path: '/',
+		bodyclass: 'detail'
+	});
 });
 
 /* devices routes */
@@ -84,7 +94,7 @@ fastify.get('/devices', async (request, reply) => {
 	const { devices, total } = await getDevices(db, limit, offset);
 	const totalPages = Math.ceil(total / limit);
 	
-	return reply.view('devices', { 
+	return reply.view('devices-listpage', { 
 		devices,
 		pagination: {
 			currentPage: page,
@@ -103,9 +113,10 @@ fastify.get('/device/:id', async (request, reply) => {
 	if (!device) {
 		return reply.code(404).send({ error: 'Device not found' });
 	}
-	return reply.view('device-detail', {
+	return reply.view('device-detailpage', {
 		device,
 		path: '/devices',
+		backlink: request.headers.referer?.includes('/devices') ? request.headers.referer : '/devices',
 		bodyclass: 'detail',
 	});
 });
@@ -119,7 +130,7 @@ fastify.get('/sources', async (request, reply) => {
 	const { sources, total } = await getSources(db, limit, offset);
 	const totalPages = Math.ceil(total / limit);
 	
-	return reply.view('sources', { 
+	return reply.view('sources-listpage', { 
 		sources,
 		pagination: {
 			currentPage: page,
@@ -138,9 +149,10 @@ fastify.get('/source/:id', async (request, reply) => {
 	if (!source) {
 		return reply.code(404).send({ error: 'Source not found' });
 	}
-	return reply.view('source-detail', {
+	return reply.view('source-detailpage', {
 		source,
 		path: '/sources',
+		backlink: request.headers.referer?.includes('/sources') ? request.headers.referer : '/sources',
 		bodyclass: 'detail',
 	});
 });
@@ -214,7 +226,7 @@ fastify.get('/records', async (request, reply) => {
 	
 	const totalPages = Math.ceil(total / limit);
 	
-	return reply.view('records', { 
+	return reply.view('records-listpage', { 
 		records,
 		pagination: {
 			currentPage: page,
@@ -240,7 +252,7 @@ fastify.get('/record/:id', async (request, reply) => {
 		return reply.code(404).send({ error: 'Record not found' });
 	}
 	
-	return reply.view('record-detail', { 
+	return reply.view('record-detailpage', { 
 		record, 
 		path: '/records',
 		backlink: request.headers.referer?.includes('/records') ? request.headers.referer : '/records',

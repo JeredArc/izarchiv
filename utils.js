@@ -1,4 +1,4 @@
-import { defaultLocale, multipliedColumns, columnFractionDigits, colPreDelta, colPreData, deltaColumns } from './settings.js';
+import { defaultLocale, multipliedColumns, columnFractionDigits, colPreDelta, colPreData, deltaColumns, columnFormatters, defaultUiDateFormat, defaultUiDateFormatList } from './settings.js';
 
 /**
  * Format a date according to the specified format
@@ -28,7 +28,46 @@ export function formatDate(date, format = 'yyyy-mm-dd hh:ii') {
 	return Object.entries(tokens).reduce(
 		(result, [token, value]) => result.replace(token, value),
 		format
-	);
+	).replaceAll(/rrr/g, isEmpty ? "" : () => formatDateRelative(date));
+}
+
+export function formatDateRelative(date) {
+	let now = new Date().getTime();
+	date = new Date(date).getTime();
+	let diffTime = Math.abs(now - date);
+	let diffYears = (diffTime / (1000 * 60 * 60 * 24 * 365));
+	let diffWeeks = (diffTime / (1000 * 60 * 60 * 24 * 7));
+	let diffDays = (diffTime / (1000 * 60 * 60 * 24));
+	let diffHours = (diffTime / (1000 * 60 * 60));
+	let diffMinutes = (diffTime / (1000 * 60));
+	let diffSeconds = (diffTime / 1000);
+	let result = now < date ? 'in ' : 'vor ';
+
+	if(diffYears >= 1) {
+		diffYears = Math.floor(diffYears);
+		diffWeeks = Math.round(diffWeeks - diffYears * 52);
+		result += `${diffYears} ${diffYears === 1 ? 'Jahr' : 'Jahren'} ${diffWeeks} ${diffWeeks === 1 ? 'Woche' : 'Wochen'}`;
+	} else if(diffWeeks >= 1) {
+		diffWeeks = Math.floor(diffWeeks);
+		diffDays = Math.round(diffDays - diffWeeks * 7);
+		result += `${diffWeeks} ${diffWeeks === 1 ? 'Woche' : 'Wochen'} ${diffDays} ${diffDays === 1 ? 'Tag' : 'Tagen'}`;
+	} else if(diffDays >= 1) {
+		diffDays = Math.floor(diffDays);
+		diffHours = Math.round(diffHours - diffDays * 24);
+		result += `${diffDays} ${diffDays === 1 ? 'Tag' : 'Tagen'} ${diffHours} ${diffHours === 1 ? 'Stunde' : 'Stunden'}`;
+	} else if(diffHours >= 1) {
+		diffHours = Math.floor(diffHours);
+		diffMinutes = Math.round(diffMinutes - diffHours * 60);
+		result += `${diffHours} ${diffHours === 1 ? 'Stunde' : 'Stunden'} ${diffMinutes} ${diffMinutes === 1 ? 'Minute' : 'Minuten'}`;
+	} else if(diffMinutes >= 1) {
+		diffMinutes = Math.floor(diffMinutes);
+		diffSeconds = Math.round(diffSeconds - diffMinutes * 60);
+		result += `${diffMinutes} ${diffMinutes === 1 ? 'Minute' : 'Minuten'} ${diffSeconds} ${diffSeconds === 1 ? 'Sekunde' : 'Sekunden'}`;
+	} else {
+		diffSeconds = Math.floor(diffSeconds);
+		result += `${diffSeconds} ${diffSeconds === 1 ? 'Sekunde' : 'Sekunden'}`;
+	}
+	return result;
 }
 
 export function formatNumber(number, column=undefined, fractionDigits=undefined) {
@@ -67,4 +106,24 @@ export function checkSettings() {
 		return false;
 	}
 	return true;
+}
+
+export function applyColumnFormatter(column, value, isList=false, classes=[]) {
+	if(column in columnFormatters) {
+		let formatter = columnFormatters[column];
+		if(typeof formatter === 'function') value = formatter(value, this);
+		else if(formatter === 'string') { /* prevent from number formatting */
+			value = String(value);
+		}
+		else if(formatter === 'number') {
+			classes.push('number');
+			value = formatNumber(parseFloat(value), column);
+		}
+		else if(formatter === 'timestamp') {
+			classes.push('timestamp');
+			value = formatDate(value, isList ? defaultUiDateFormatList : defaultUiDateFormat);
+		}
+		else console.error(`Unknown formatter for column ${column}: ${JSON.stringify(formatter)}`);
+	}
+	return value;
 }

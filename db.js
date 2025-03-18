@@ -3,7 +3,8 @@ import { parseIzarXml } from './mbus.js';
 import { formatDate, tryParseJson } from './utils.js';
 import { colPreRecord, colPreData, colPreDelta, deltaColumns, colPreCustom } from './settings.js';
 import { Record } from './record.js';
-
+import { Device } from './device.js';
+import { Source } from './source.js';
 const Sqlite3 = sqlite3.verbose();
 
 const RDY_ORIGINAL_EXTENSION = ".xml";
@@ -71,7 +72,7 @@ export async function initDatabase(dbfile) {
 		CREATE TABLE IF NOT EXISTS sources (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			type TEXT NOT NULL,
-			rdysent BOOLEAN DEFAULT 0,
+			rdysent BOOLEAN DEFAULT NULL,
 			filename TEXT,
 			data BLOB,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -104,7 +105,7 @@ export async function storeFile(db, filename, buffer) {
 			
 			// Find the most recent source file with all data in one query
 			const source = await db.getAsync(`
-				SELECT id, data FROM sources
+				SELECT id FROM sources
 				WHERE filename = ?
 				AND type = ?
 				AND created_at > datetime('now', '-1 hour')
@@ -120,7 +121,7 @@ export async function storeFile(db, filename, buffer) {
 					WHERE id = ?
 				`, [source.id]);
 				
-				console.log(`Marked source ID ${source.id} (${origFilename}) as ready`);
+				console.log(`Marked source #${source.id} (${origFilename}) as ready`);
 				
 				return result;
 			} else {
@@ -130,10 +131,10 @@ export async function storeFile(db, filename, buffer) {
 		} else {
 			// Always insert a new source for non-rdy files
 			const result = await db.runAsync(
-				"INSERT INTO sources (type, filename, data) VALUES (?, ?, ?)", 
-				[SOURCE_TYPE_IZAR_FTP, filename, buffer]
+				"INSERT INTO sources (type, filename, data, rdysent) VALUES (?, ?, ?, ?)", 
+				[SOURCE_TYPE_IZAR_FTP, filename, buffer, 0]
 			);
-			console.log(`Stored new file: ${filename} in database (ID: ${result.lastID}, ${buffer.length} bytes)`);
+			console.log(`Stored new file ${filename} in database as #${result.lastID} (${buffer.length} bytes)`);
 
 			await processFile(db, buffer, result.lastID);
 
@@ -154,13 +155,13 @@ async function processFile(db, data, sourceId) {
 		const parsedData = parseIzarXml(xmlContent);
 		
 		if (parsedData?.records?.length > 0) {
-			console.log(`Parsed ${parsedData.records.length} records from source ID ${sourceId}`);
-			
 			// Store each record in the database
 			for (const record of parsedData.records) {
 				const recordJson = JSON.stringify(record);
 				await insertRecord(db, sourceId, recordJson);
 			}
+
+			console.log(`Successfully processed ${parsedData.records.length} records from source #${sourceId}`);
 		}
 		else {
 			console.warn(`No records found in source ID ${sourceId}`);
@@ -188,7 +189,7 @@ async function insertRecord(db, sourceId, recordJson) {
 			[deviceAddress, recordData.deviceName || deviceAddress, 'Automatisch erstellt am ' + formatDate(new Date(), 'dd.mm.yyyy hh:ii')]
 		);
 		device = { id: deviceResult.lastID };
-		console.log(`Created device ID ${device.id} for address ${deviceAddress}`);
+		console.log(`Created device #${device.id} for address ${deviceAddress}`);
 	}
 
 	let time = recordData.izarTimestamp || recordData.telTimestamp || recordData.time || Date.now();
@@ -229,8 +230,6 @@ async function insertRecord(db, sourceId, recordJson) {
 						timeDiff: timeDiffSeconds,
 						valueDiff: valueDiff
 					};
-					
-					console.log(`Delta calculation for ${deltaKey}: ${valueDiff} / ${timeDiffSeconds} = ${ratePerSecond}`);
 				}
 			}
 		}
@@ -289,13 +288,13 @@ async function insertRecord(db, sourceId, recordJson) {
 						[JSON.stringify(nextDelta), nextRecord.id]
 					);
 					
-					console.log(`Updated next record ${nextRecord.id} delta for ${deltaKey}: ${valueDiff} / ${timeDiffSeconds} = ${ratePerSecond}`);
+					console.log(`Updated next record #${nextRecord.id} delta for ${deltaKey}: ${valueDiff} / ${timeDiffSeconds} = ${ratePerSecond}`);
 				}
 			}
 		}
 	}
 	
-	console.log(`Created record ID ${result.lastID} from source ID ${sourceId} for device ${deviceAddress}`);
+	console.log(`Created record #${result.lastID} from source #${sourceId} for device ${deviceAddress}`);
 	return result;
 }
 
@@ -467,7 +466,7 @@ export async function getRecords(db, limit = 100, offset = 0, filters = []) {
 		
 		// Get paginated records
 		const records = await db.allAsync(`
-			SELECT r.id, r.device, r.source, r.time, r.data, r.delta, d.name as deviceName, (COALESCE(s.filename, s.type, 'Unbekannt')) as sourceName
+			SELECT r.id, r.device, r.source, r.time, r.data, r.delta, d.name as deviceName, d.overview_columns as deviceOverviewColumns, (COALESCE(s.filename, s.type, 'Unbekannt')) as sourceName
 			FROM records r
 			JOIN devices d ON r.device = d.id
 			JOIN sources s ON r.source = s.id
@@ -518,7 +517,6 @@ export async function getRecord(db, id) {
 				deltaInfo.thisTime = result.time;
 				deltaInfo.timeDiff = deltaInfo.thisTime.getTime() - deltaInfo.prevTime.getTime();
 				deltaInfo.ratePerSec = deltaInfo.valueDiff / (deltaInfo.timeDiff / 1000);
-				console.log(deltaInfo.valueDiff / deltaInfo.timeDiff);
 			}
 		}
 		// Create and return a Record instance
@@ -549,7 +547,7 @@ export async function getDevices(db, limit = 100, offset = 0) {
 		`, [limit, offset]);
 		
 		return {
-			devices,
+			devices: devices.map(device => new Device(device)),
 			total: countResult.total
 		};
 	} catch (err) {
@@ -570,23 +568,34 @@ export async function getDevice(db, id) {
 		`, [id]);
 		
 		if (!device) return null;
+
+		let result = new Device(device);
 		
 		// Get the most recent records for this device
-		const records = await db.allAsync(`
-			SELECT r.id, r.device, r.source, r.time, r.data, r.delta, d.name as deviceName, (COALESCE(s.filename, s.type, 'Unbekannt')) as sourceName
+		const newestRecords = await db.allAsync(`
+			SELECT r.id, r.device, r.source, r.time, r.data, r.delta, d.name as deviceName, d.overview_columns as deviceOverviewColumns, (COALESCE(s.filename, s.type, 'Unbekannt')) as sourceName
 			FROM records r
 			JOIN sources s ON r.source = s.id
+			JOIN devices d ON r.device = d.id
 			WHERE r.device = ?
 			ORDER BY r.time DESC, r.id DESC
 			LIMIT 10
 		`, [id]);
+		const recentRecord = await db.getAsync(`
+			SELECT r.id, r.device, r.source, r.time, r.data, r.delta, d.name as deviceName, d.overview_columns as deviceOverviewColumns, (COALESCE(s.filename, s.type, 'Unbekannt')) as sourceName
+			FROM records r
+			JOIN sources s ON r.source = s.id
+			JOIN devices d ON r.device = d.id
+			WHERE r.device = ?
+			ORDER BY s.created_at DESC, r.time DESC, r.id DESC
+			LIMIT 1
+		`, [id]);
+
 		
-		device.recentRecords = records.map(record => ({
-			...record,
-			data: JSON.parse(record.data)
-		}));
-		
-		return device;
+		result.newestRecords = newestRecords.map(record => new Record(record));
+		result.newestRecord = result.newestRecords[0] ?? null;
+		result.recentRecord = recentRecord ? new Record(recentRecord) : null;
+		return result;
 	} catch (err) {
 		console.error(`Database error: ${err.message}`);
 		throw err;
@@ -604,7 +613,7 @@ export async function getSources(db, limit = 100, offset = 0) {
 		
 		// Get paginated sources
 		const sources = await db.allAsync(`
-			SELECT s.*, COUNT(r.id) as recordCount
+			SELECT s.id, s.type, s.rdysent, s.filename, s.created_at, COUNT(r.id) as recordCount
 			FROM sources s
 			LEFT JOIN records r ON s.id = r.source
 			GROUP BY s.id
@@ -613,7 +622,7 @@ export async function getSources(db, limit = 100, offset = 0) {
 		`, [limit, offset]);
 		
 		return {
-			sources,
+			sources: sources.map(source => new Source(source)),
 			total: countResult.total
 		};
 	} catch (err) {
@@ -635,21 +644,21 @@ export async function getSource(db, id) {
 		
 		if (!source) return null;
 		
-		// Get all records for this source
-		const records = await db.allAsync(`
-			SELECT r.id, r.device, r.source, r.time, r.data, d.name as deviceName
+		let result = new Source(source);
+		
+		// Get the most recent records for this source
+		const newestRecords = await db.allAsync(`
+			SELECT r.id, r.device, r.source, r.time, r.data, r.delta, d.name as deviceName, d.overview_columns as deviceOverviewColumns, (COALESCE(s.filename, s.type, 'Unbekannt')) as sourceName
 			FROM records r
+			JOIN sources s ON r.source = s.id
 			JOIN devices d ON r.device = d.id
 			WHERE r.source = ?
 			ORDER BY r.time DESC, r.id DESC
+			LIMIT 100
 		`, [id]);
 		
-		source.records = records.map(record => ({
-			...record,
-			data: JSON.parse(record.data)
-		}));
-		
-		return source;
+		result.newestRecords = newestRecords.map(record => new Record(record));
+		return result;
 	} catch (err) {
 		console.error(`Database error: ${err.message}`);
 		throw err;

@@ -8,27 +8,43 @@
 		</div>
 	</div>
 	
+<%
+let columns = [
+	colPreDevice + 'address',
+	colPreDevice + 'name',
+	colPreDevice + 'description',
+	colPreDevice + 'recordCount',
+	colPreDevice + 'created_at',
+];
+%>
 	<div class="table-container">
 		<table class="list-table">
 			<thead>
 				<tr>
+					<!-- ID column is always displayed -->
 					<th><div class="th-content">#</div></th>
-					<th><div class="th-content">Adresse</div></th>
-					<th><div class="th-content">Name</div></th>
-					<th><div class="th-content">Beschreibung</div></th>
-					<th><div class="th-content">Messwerte</div></th>
-					<th><div class="th-content">Erstellt am</div></th>
+					<!-- Dynamic columns -->
+					<% columns.forEach(column => { %>
+						<th><div class="th-content"><%= columnCaption(column) %></div></th>
+					<% }); %>
 				</tr>
 			</thead>
 			<tbody>
 				<% devices.forEach(device => { %>
 					<tr>
-						<td><a href="/device/<%= device.id %>"><%= device.id %></a></td>
-						<td><span><%= device.address %></span></td>
-						<td><span><%= device.name %></span></td>
-						<td><span><%= device.description || '' %></span></td>
-						<td class="number"><span><%= device.recordCount %></span></td>
-						<td class="timestamp"><span><%- formatDate(device.created_at, defaultUiDateFormat) %></span></td>
+						<!-- ID column is always displayed -->
+						<td><a href="<%= device.columnLink(colPreDevice + 'id') %>"><%= device.id %></a></td>
+						<!-- Dynamic columns -->
+						<% columns.forEach(column => { %>
+							<% let { value, link, classes } = device.columnOutput(column, true); %>
+							<td class="<%= classes.join(' ') %>"><span>
+								<% if (link) { %>
+									<a href="<%= link %>"><%= value %></a>
+								<% } else { %>
+									<%= value %>
+								<% } %>
+							</span></td>
+						<% }); %>
 					</tr>
 				<% }); %>
 			</tbody>

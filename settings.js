@@ -22,7 +22,8 @@ export const webserver = {
 };
 
 export const defaultLocale = "de-AT";
-export const defaultUiDateFormat = "dd.mm.yyyy hh:ii:ss";
+export const defaultUiDateFormat = "dd.mm.yyyy hh:ii:ss (rrr)";
+export const defaultUiDateFormatList = "dd.mm.yyyy hh:ii";
 
 export const mbusTimezoneOffset = 60; /* UTC + minutes */
 export const mbusTelTimeHeader = "04-6D"; /* the header of which the value should be used as the telegram's timestamp */
@@ -30,11 +31,14 @@ export const mbusTelTimeHeader = "04-6D"; /* the header of which the value shoul
 export const saveUploadsInFilesystem = true;
 export const uploadDirPath = "./uploads";
 
-/* Column prefix definitions for different data sources */
+/* Column prefix definitions for different record data sources */
 export const colPreRecord = ".";  /* For direct record properties */
 export const colPreData = ":";    /* For properties in the data object */
 export const colPreDelta = "^";   /* For properties in the delta object */
 export const colPreCustom = "=";  /* For custom columns (currently only multipliedColumns) */
+
+export const colPreDevice = ">";  /* For device properties */
+export const colPreSource = "<";  /* For source properties */
 
 export const recordColumns = [
 	'time', 'deviceName', 'sourceName', 'data', 'delta'
@@ -75,10 +79,17 @@ export const multipliedColumns = { /* custom column => [source column, multiplie
 	[colPreCustom + '∆ Volumen [m³/h]']:           [colPreDelta + '∆ Volumen [l/s]', 1*3600/1000],
 };
 
-export const columnFormatters = { /* column => formatter function (value, record) */
-	[colPreRecord + 'time']: value => formatDate(value, defaultUiDateFormat),
+export const columnFormatters = { /* column => formatter function (value, record) or "timestamp" */
+	[colPreRecord + 'time']: 'timestamp',
 	[colPreRecord + 'data']: value => JSON.stringify(value),
 	[colPreRecord + 'delta']: value => JSON.stringify(value),
+
+	[colPreDevice + 'recordCount']: 'number',
+	[colPreDevice + 'created_at']: 'timestamp',
+
+	[colPreSource + 'recordCount']: 'number',
+	[colPreSource + 'created_at']: 'timestamp',
+	[colPreSource + 'rdysent']: value => value === 1 ? '✓' : value === 0 ? '✗' : '-',
 }
 
 export const columnFractionDigits = {
