@@ -31,6 +31,8 @@ export const mbusTelTimeHeader = "04-6D"; /* the header of which the value shoul
 export const saveUploadsInFilesystem = true;
 export const uploadDirPath = "./uploads";
 
+export const alwaysShowPagination = true;
+
 /* Column prefix definitions for different record data sources */
 export const colPreRecord = ".";  /* For direct record properties */
 export const colPreData = ":";    /* For properties in the data object */

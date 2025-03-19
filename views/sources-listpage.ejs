@@ -1,12 +1,11 @@
-<div class="list-page">
-	<h2>Quellen</h2>
-	
-	<!-- Control buttons -->
-	<div class="list-controls">
-		<div class="list-info">
-			<p>Zeige <%= sources.length %> von <%= pagination.total %> Quellen</p>
-		</div>
+<h2>Quellen</h2>
+
+<!-- Control buttons -->
+<div class="list-top-bar">
+	<div class="list-info">
+		<p>Zeige <%= sources.length %> von <%= pagination.total %> Quellen</p>
 	</div>
+</div>
 
 <%
 let columns = [
@@ -17,60 +16,43 @@ let columns = [
 	colPreSource + 'recordCount',
 ];
 %>
-	<div class="table-container">
-		<table class="list-table">
-			<thead>
+<div class="table-container">
+	<table class="list-table">
+		<thead>
+			<tr>
+				<!-- ID column is always displayed -->
+				<th><div class="th-content">#</div></th>
+				<!-- Dynamic columns -->
+				<% columns.forEach(column => { %>
+					<th><div class="th-content"><%= columnCaption(column) %></div></th>
+				<% }); %>
+			</tr>
+		</thead>
+		<tbody>
+			<% sources.forEach(source => { %>
 				<tr>
 					<!-- ID column is always displayed -->
-					<th><div class="th-content">#</div></th>
+					<td><a href="<%= source.columnLink(colPreSource + 'id') %>"><%= source.id %></a></td>
 					<!-- Dynamic columns -->
 					<% columns.forEach(column => { %>
-						<th><div class="th-content"><%= columnCaption(column) %></div></th>
+						<% let { value, link, classes } = source.columnOutput(column, true); %>
+						<td class="<%= classes.join(' ') %>"><span>
+							<% if (link) { %>
+								<a href="<%= link %>"><%= value %></a>
+							<% } else { %>
+								<%= value %>
+							<% } %>
+						</span></td>
 					<% }); %>
 				</tr>
-			</thead>
-			<tbody>
-				<% sources.forEach(source => { %>
-					<tr>
-						<!-- ID column is always displayed -->
-						<td><a href="<%= source.columnLink(colPreSource + 'id') %>"><%= source.id %></a></td>
-						<!-- Dynamic columns -->
-						<% columns.forEach(column => { %>
-							<% let { value, link, classes } = source.columnOutput(column, true); %>
-							<td class="<%= classes.join(' ') %>"><span>
-								<% if (link) { %>
-									<a href="<%= link %>"><%= value %></a>
-								<% } else { %>
-									<%= value %>
-								<% } %>
-							</span></td>
-						<% }); %>
-					</tr>
-				<% }); %>
-			</tbody>
-		</table>
-	</div>
+			<% }); %>
+		</tbody>
+	</table>
+</div>
 
-	<!-- Bottom bar with info and pagination -->
-	<div class="list-bottom-bar">
-		<% if (pagination.totalPages > 1) { %>
-			<div class="pagination">
-				<% if (pagination.currentPage > 1) { %>
-					<a href="/sources?page=1" class="pagination-link">&laquo;</a>
-					<a href="/sources?page=<%= pagination.currentPage - 1 %>" class="pagination-link">&lsaquo;</a>
-				<% } %>
-				
-				<% for (let i = Math.max(1, pagination.currentPage - 2); i <= Math.min(pagination.totalPages, pagination.currentPage + 2); i++) { %>
-					<a href="/sources?page=<%= i %>" class="pagination-link <%= i === pagination.currentPage ? 'active' : '' %>"><%= i %></a>
-				<% } %>
-				
-				<% if (pagination.currentPage < pagination.totalPages) { %>
-					<a href="/sources?page=<%= pagination.currentPage + 1 %>" class="pagination-link">&rsaquo;</a>
-					<a href="/sources?page=<%= pagination.totalPages %>" class="pagination-link">&raquo;</a>
-				<% } %>
-			</div>
-		<% } else { %>
-			<div class="pagination"></div> <!-- Empty div to maintain flex layout -->
-		<% } %>
-	</div>
-</div> 
+<%- include('pagination', { 
+	pagination: pagination, 
+	path: path,
+	items: sources, 
+	itemName: 'Quellen' 
+}) %> 

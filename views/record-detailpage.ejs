@@ -1,21 +1,140 @@
-<div class="detail-page">
-	<div class="top-actions">
-		<a href="<%= backlink %>" class="btn">Zurück zur Übersicht</a>
+<div class="top-actions">
+	<a href="<%= backlink %>" class="btn">Zurück zur Übersicht</a>
+</div>
+<h2>Messwert Details #<%= record.id %></h2>
+
+<!-- Overview Section -->
+<div class="detail-section">
+	<h3>Übersicht</h3>
+	<%- include("record-summary") %>
+</div>
+
+<!-- Data Values Section -->
+<div class="detail-section collapsible">
+	<h3>Messwerte</h3>
+	<div class="collapsible-content">
+		<div class="table-container">
+			<table class="detail-table record-data">
+				<thead>
+					<tr>
+						<th>Feld</th>
+						<th>Wert</th>
+					</tr>
+				</thead>
+				<tbody>
+					<% if (record.hasDataColumns) { %>
+						<% record.dataColumnNames.forEach(column => {
+							let { value, link, classes } = record.columnOutput(column);
+							%>
+							<tr>
+								<td><%= columnCaption(column) %></td>
+								<td class="<%= classes.join(' ') %>"><span>
+									<% if (link) { %>
+										<a href="<%= link %>"><%= value %></a>
+									<% } else { %>
+										<%= value %>
+									<% } %>
+								</span></td>		
+							</tr>
+						<% }); %>
+					<% } else { %>
+						<tr>
+							<td colspan="2" class="no-data">Keine Messwerte vorhanden</td>
+						</tr>
+					<% } %>
+				</tbody>
+			</table>
+		</div>
 	</div>
-	<h2>Messwert Details #<%= record.id %></h2>
-	
-	<!-- Overview Section -->
-	<div class="detail-section">
-		<h3>Übersicht</h3>
-		<%- include("record-summary") %>
-	</div>
-	
-	<!-- Data Values Section -->
-	<div class="detail-section collapsible">
-		<h3>Messwerte</h3>
-		<div class="collapsible-content">
+</div>
+
+<!-- Delta Values Section -->
+<div class="detail-section collapsible">
+	<h3>Änderungswerte</h3>
+	<div class="collapsible-content">
+		<% if (record.hasDeltaColumns) { %>
 			<div class="table-container">
-				<table class="detail-table record-data">
+				<table class="detail-table record-delta">
+					<thead>
+						<tr>
+							<th>Feld</th>
+							<th>Änderung pro Zeit</th>
+							<th>Vorherige #</th>
+							<th>Vorheriger Wert</th>
+							<th>Aktueller Wert</th>
+							<th>Wertdifferenz</th>
+							<th>Vorherige Zeit</th>
+							<th>Aktuelle Zeit</th>
+							<th>Zeitdifferenz</th>
+						</tr>
+					</thead>
+					<tbody>
+						<% record.deltaColumnNames.forEach(column => {
+							let { value, link, classes, raw } = record.columnOutput(column);
+							let deltaInfo = record.delta[column.substring(1)];
+							%>
+							<tr>
+								<td><%= columnCaption(column) %></td>
+								<td class="<%= classes.join(' ') %>"><span>
+									<% if(typeof deltaInfo.ratePerSec === "number" && typeof raw === "number" && deltaInfo.ratePerSec !== raw) { %>
+										<%# Stored and just calculated values differ - showing both values %>
+										<%= formatNumber(deltaInfo.ratePerSec, column) %>
+										<span style="text-decoration: line-through"><%= value %></span>
+									<% } else { %>
+										<%= value %>
+									<% } %>
+								</span></td>
+								<% if (deltaInfo.prevId) { %>
+									<td>
+										<a href="/record/<%= deltaInfo.prevId %>">#<%= deltaInfo.prevId %></a>
+									</td>
+									<td>
+										<%= formatNumber(deltaInfo.prevValue, deltaColumns[column]) %>
+									</td>
+									<td>	
+										<%= formatNumber(deltaInfo.thisValue, deltaColumns[column]) %>
+									</td>
+									<td>
+										<%= formatNumber(deltaInfo.valueDiff, deltaColumns[column]) %>
+									</td>
+									<td>
+										<%= formatDate(deltaInfo.prevTime, defaultUiDateFormat.replace(/(\s*\()?rrr(\))?/g, "")) %>
+									</td>
+									<td>
+										<%= formatDate(deltaInfo.thisTime, defaultUiDateFormat.replace(/(\s*\()?rrr(\))?/g, "")) %>
+									</td>
+									<td>
+										<%= formatNumber(Math.round(deltaInfo.timeDiff / 1000)) %> s
+									</td>
+								<% } else { %>
+									<td>-</td>
+									<td>-</td>
+									<td>-</td>
+									<td>-</td>
+									<td>-</td>
+									<td>-</td>
+									<td>-</td>
+								<% } %>
+								</td>
+							</tr>
+						<% }); %>
+					</tbody>
+				</table>
+			</div>
+		<% } else { %>
+			<p class="no-data">Keine Differenzwerte vorhanden</p>
+		<% } %>
+	</div>
+</div>
+
+
+<!-- Calculated Values Section -->
+<div class="detail-section collapsible">
+	<h3>Umgerechnete Einheiten</h3>
+	<div class="collapsible-content">
+		<% if (record.hasCustomColumns) { %>
+			<div class="table-container">
+				<table class="detail-table record-calculated">
 					<thead>
 						<tr>
 							<th>Feld</th>
@@ -23,155 +142,33 @@
 						</tr>
 					</thead>
 					<tbody>
-						<% if (record.hasDataColumns) { %>
-							<% record.dataColumnNames.forEach(column => {
-								let { value, link, classes } = record.columnOutput(column);
-								%>
-								<tr>
-									<td><%= columnCaption(column) %></td>
-									<td class="<%= classes.join(' ') %>"><span>
-										<% if (link) { %>
-											<a href="<%= link %>"><%= value %></a>
-										<% } else { %>
-											<%= value %>
-										<% } %>
-									</span></td>		
-								</tr>
-							<% }); %>
-						<% } else { %>
+						<% record.customColumnNames.forEach(column => {
+							let { value, link, classes } = record.columnOutput(column);
+							%>
 							<tr>
-								<td colspan="2" class="no-data">Keine Messwerte vorhanden</td>
+								<td><%= columnCaption(column) %></td>
+								<td class="<%= classes.join(' ') %>"><span>
+									<% if (link) { %>
+										<a href="<%= link %>"><%= value %></a>
+									<% } else { %>
+										<%= value %>
+									<% } %>
+								</span></td>
 							</tr>
-						<% } %>
+						<% }); %>
 					</tbody>
 				</table>
 			</div>
-		</div>
+		<% } else { %>
+			<p class="no-data">Keine berechneten Werte vorhanden</p>
+		<% } %>
 	</div>
-	
-	<!-- Delta Values Section -->
-	<div class="detail-section collapsible">
-		<h3>Änderungswerte</h3>
-		<div class="collapsible-content">
-			<% if (record.hasDeltaColumns) { %>
-				<div class="table-container">
-					<table class="detail-table record-delta">
-						<thead>
-							<tr>
-								<th>Feld</th>
-								<th>Änderung pro Zeit</th>
-								<th>Vorherige #</th>
-								<th>Vorheriger Wert</th>
-								<th>Aktueller Wert</th>
-								<th>Wertdifferenz</th>
-								<th>Vorherige Zeit</th>
-								<th>Aktuelle Zeit</th>
-								<th>Zeitdifferenz</th>
-							</tr>
-						</thead>
-						<tbody>
-							<% record.deltaColumnNames.forEach(column => {
-								let { value, link, classes, raw } = record.columnOutput(column);
-								let deltaInfo = record.delta[column.substring(1)];
-								%>
-								<tr>
-									<td><%= columnCaption(column) %></td>
-									<td class="<%= classes.join(' ') %>"><span>
-										<% if(typeof deltaInfo.ratePerSec === "number" && typeof raw === "number" && deltaInfo.ratePerSec !== raw) { %>
-											<%# Stored and just calculated values differ - showing both values %>
-											<%= formatNumber(deltaInfo.ratePerSec, column) %>
-											<span style="text-decoration: line-through"><%= value %></span>
-										<% } else { %>
-											<%= value %>
-										<% } %>
-									</span></td>
-									<% if (deltaInfo.prevId) { %>
-										<td>
-											<a href="/record/<%= deltaInfo.prevId %>">#<%= deltaInfo.prevId %></a>
-										</td>
-										<td>
-											<%= formatNumber(deltaInfo.prevValue, deltaColumns[column]) %>
-										</td>
-										<td>	
-											<%= formatNumber(deltaInfo.thisValue, deltaColumns[column]) %>
-										</td>
-										<td>
-											<%= formatNumber(deltaInfo.valueDiff, deltaColumns[column]) %>
-										</td>
-										<td>
-											<%= formatDate(deltaInfo.prevTime, defaultUiDateFormat.replace(/(\s*\()?rrr(\))?/g, "")) %>
-										</td>
-										<td>
-											<%= formatDate(deltaInfo.thisTime, defaultUiDateFormat.replace(/(\s*\()?rrr(\))?/g, "")) %>
-										</td>
-										<td>
-											<%= formatNumber(Math.round(deltaInfo.timeDiff / 1000)) %> s
-										</td>
-									<% } else { %>
-										<td>-</td>
-										<td>-</td>
-										<td>-</td>
-										<td>-</td>
-										<td>-</td>
-										<td>-</td>
-										<td>-</td>
-									<% } %>
-									</td>
-								</tr>
-							<% }); %>
-						</tbody>
-					</table>
-				</div>
-			<% } else { %>
-				<p class="no-data">Keine Differenzwerte vorhanden</p>
-			<% } %>
-		</div>
-	</div>
+</div>
 
-	
-	<!-- Calculated Values Section -->
-	<div class="detail-section collapsible">
-		<h3>Umgerechnete Einheiten</h3>
-		<div class="collapsible-content">
-			<% if (record.hasCustomColumns) { %>
-				<div class="table-container">
-					<table class="detail-table record-calculated">
-						<thead>
-							<tr>
-								<th>Feld</th>
-								<th>Wert</th>
-							</tr>
-						</thead>
-						<tbody>
-							<% record.customColumnNames.forEach(column => {
-								let { value, link, classes } = record.columnOutput(column);
-								%>
-								<tr>
-									<td><%= columnCaption(column) %></td>
-									<td class="<%= classes.join(' ') %>"><span>
-										<% if (link) { %>
-											<a href="<%= link %>"><%= value %></a>
-										<% } else { %>
-											<%= value %>
-										<% } %>
-									</span></td>
-								</tr>
-							<% }); %>
-						</tbody>
-					</table>
-				</div>
-			<% } else { %>
-				<p class="no-data">Keine berechneten Werte vorhanden</p>
-			<% } %>
-		</div>
+<!-- Raw JSON Section (for debugging) -->
+<div class="detail-section collapsible collapsed">
+	<h3>Rohdaten</h3>
+	<div class="collapsible-content">
+		<pre class="json-content"><%= JSON.stringify(record.data, null, 2) %></pre>
 	</div>
-	
-	<!-- Raw JSON Section (for debugging) -->
-	<div class="detail-section collapsible collapsed">
-		<h3>Rohdaten</h3>
-		<div class="collapsible-content">
-			<pre class="json-content"><%= JSON.stringify(record.data, null, 2) %></pre>
-		</div>
-	</div>
-
-</div> 
+</div>

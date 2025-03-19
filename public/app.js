@@ -8,11 +8,13 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Row click navigation
 	initRowClickNavigation();
 
-
 	// Initialize list page functionality (for records, devices, and sources pages)
 	initListPageFunctionality();
 
 	initDetailPageFunctionality();
+	
+	// Prevent phone number auto-detection
+	preventPhoneLinks();
 });
 
 // Initialize collapsible sections
@@ -219,6 +221,12 @@ function initFilterFunctionality() {
 	}
 }
 
+function alignOverlayPanel(panel, button) {
+	let top = button.offsetTop + button.offsetHeight + 10;
+	panel.style.top = top + 'px';
+	panel.style.maxHeight = (window.innerHeight - 10 - top) + 'px';
+}
+
 // Initialize overlay panels
 function initOverlayPanels() {
 	// Skip if overlay panels don't exist
@@ -280,6 +288,7 @@ function initOverlayPanels() {
 			// Restore checkbox states from URL before showing the panel
 			restoreCheckboxStatesFromURL();
 			
+			alignOverlayPanel(columnsPanel, columnsButton);
 			columnsPanel.classList.add('active');
 			if (filterPanel) filterPanel.classList.remove('active'); // Close other panel
 		});
@@ -291,6 +300,7 @@ function initOverlayPanels() {
 	
 	if (filterButton && filterPanel) {
 		filterButton.addEventListener('click', function() {
+			alignOverlayPanel(filterPanel, filterButton);
 			filterPanel.classList.add('active');
 			if (columnsPanel) columnsPanel.classList.remove('active'); // Close other panel
 		});
@@ -334,7 +344,24 @@ function initDetailPageFunctionality() {
 		return;
 	}
 
+	initBodyPadding();
+
+	// Initialize summary item click navigation
 	initSummaryItemClickNavigation();
+}
+
+function initBodyPadding() {
+	// Set initial padding based on header/footer heights
+	const header = document.querySelector('header');
+	const footer = document.querySelector('footer');
+	const main = document.querySelector('main');
+	const adjustPadding = () => {
+		main.style.paddingTop = header.offsetHeight + 'px';
+		main.style.paddingBottom = footer.offsetHeight + 'px';
+	};
+	adjustPadding();
+	// Update padding when window is resized
+	window.addEventListener('resize', adjustPadding);
 }
 
 function initSummaryItemClickNavigation() {
@@ -345,4 +372,14 @@ function initSummaryItemClickNavigation() {
 		});
 		item.style.cursor = 'pointer';
 	});
+}
+
+// Prevent phone number auto-detection
+function preventPhoneLinks() {
+	setTimeout(() => {
+		document.querySelectorAll('a[href^="tel"]').forEach(link => {
+			link.href = 'javascript:void(0)';
+			link.classList.add('no-phone-link');
+		});
+	}, 100);
 }

@@ -1,19 +1,17 @@
-<div class="dashboard detail-page">
-	<h2>Dashboard</h2>
-	
-	<div class="detail-section collapsible">
-		<h3>Aktuellste Messwerte  (<%= records.length %> von <%= total %> Messwerten insgesamt)</h3>
+<h2>Dashboard</h2>
 
-		<div class="collapsible-content">
-			<%- include("records-table", {
-				records: records,
-				columns: {
-					selected: [
-						colPreRecord + 'time', colPreRecord + 'deviceName', colPreRecord + 'sourceName',
-						...new Set(records.flatMap(record => record.deviceOverviewColumns))
-					],
-				}
-			}) %>
-		</div>
+<div class="detail-section collapsible">
+	<h3>Aktuellste Messwerte  (<%= records.length %> von <%= total %> Messwerten insgesamt)</h3>
+
+	<div class="collapsible-content">
+		<%- include("records-table", {
+			records: records,
+			columns: {
+				selected: [
+					colPreRecord + 'time', colPreRecord + 'deviceName', colPreRecord + 'sourceName',
+					...new Set(records.flatMap(record => record.deviceOverviewColumns))
+				],
+			}
+		}) %>
 	</div>
-</div> 
+</div>

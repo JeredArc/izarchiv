@@ -1,165 +1,148 @@
-<div class="list-page">
-	<h2>Messwerte</h2>
-	
-	<!-- Control buttons -->
-	<div class="list-controls">
-		<div class="list-info">
-			<p>Zeige <%= records.length %> von <%= pagination.total %> Messwerten</p>
-		</div>
-		<div class="control-buttons">
-			<button type="button" id="columns-button" class="control-button">Spaltenauswahl</button>
-			<button type="button" id="filter-button" class="control-button">Filtern</button>
-		</div>
-	</div>
-	
-	<!-- Column Selection Overlay Panel -->
-	<div id="columns-panel" class="overlay-panel">
-		<h3>Spaltenauswahl</h3>
-		<form action="/records" method="GET" id="columns-form">
-			<!-- Preserve existing query parameters -->
-			<input type="hidden" name="page" value="<%= pagination.currentPage %>">
-			<input type="hidden" name="limit" value="<%= pagination.limit %>">
-			
-			<div class="column-checkboxes">
-				<% columns.all.forEach(column => { %>
-					<div class="column-checkbox">
-						<input 
-							type="checkbox" 
-							id="col-<%= column %>" 
-							<%= columns.defaultDeselected.includes(column) ? 'data-default-deselected="true"' : '' %>
-							<%= columns.selected.includes(column) ? 'checked' : '' %>
-						>
-						<label for="col-<%= column %>"><%= columnCaption(column) %></label>
-					</div>
-				<% }); %>
-			</div>
-			
-			<input type="hidden" name="columns" id="columns-param" value="">
-			<div class="panel-actions">
-				<button type="button" class="cancel">Abbrechen</button>
-				<button type="submit">Anwenden</button>
-			</div>
-		</form>
-	</div>
-	
-	<!-- Filter Overlay Panel -->
-	<div id="filter-panel" class="overlay-panel">
-		<h3>Filter</h3>
-		<form action="/records" method="GET" id="filter-form">
-			<!-- Preserve existing query parameters -->
-			<input type="hidden" name="page" value="1">
-			<input type="hidden" name="limit" value="<%= pagination.limit %>">
-			<input type="hidden" name="columns" value="<%= getColumnQueryParam().replace('&columns=', '') %>">
-			
-			<div id="filter-conditions">
-				<% if (filters && filters.length > 0) { %>
-					<% filters.forEach((filter, index) => { %>
-						<div class="filter-condition" data-index="<%= index %>">
-							<select name="filter_column[]" class="filter-column">
-								<% columns.all.forEach(column => { %>
-									<option value="<%= column %>" <%= filter.column === column ? 'selected' : '' %>>
-										<%= columnCaption(column) %>
-									</option>
-								<% }); %>
-							</select>
-							<select name="filter_operator[]" class="filter-operator">
-								<% Object.entries(filterOperators).forEach(op => { %>
-									<option value="<%= op %>" <%= filter.operator === op ? 'selected' : '' %>><%= operatorCaption(op) %></option>
-								<% }); %>
-							</select>
-							<input type="text" name="filter_value[]" class="filter-value" value="<%= filter.value %>" placeholder="Wert">
-							<button type="button" class="remove-filter">Entfernen</button>
-						</div>
-					<% }); %>
-				<% } else { %>
-					<div class="filter-condition" data-index="0">
-						<select name="filter_column[]" class="filter-column">
-							<% columns.all.forEach(column => { %>
-								<option value="<%= column %>"><%= columnCaption(column) %></option>
-							<% }); %>
-						</select>
-						<select name="filter_operator[]" class="filter-operator">
-							<% Object.entries(filterOperators).forEach(op => { %>
-								<option value="<%= op %>"><%= operatorCaption(op) %></option>
-							<% }); %>
-						</select>
-						<input type="text" name="filter_value[]" class="filter-value" placeholder="Wert">
-						<button type="button" class="remove-filter">Entfernen</button>
-					</div>
-				<% } %>
-			</div>
-			
-			<div class="filter-actions">
-				<button type="button" id="add-filter">Filter hinzufügen</button>
-			</div>
-			
-			<div class="panel-actions">
-				<% if (filters && filters.length > 0) { %>
-					<a href="/records?columns=<%= getColumnQueryParam().replace('&columns=', '') %>" class="clear-filters">Filter zurücksetzen</a>
-				<% } %>
-				<button type="button" class="cancel">Abbrechen</button>
-				<button type="submit">Anwenden</button>
-			</div>
-		</form>
-	</div>
-	
-	<%- include("records-table") %>
-
-	<!-- Bottom bar with info and pagination -->
-	<div class="list-bottom-bar">
-		<% if (pagination.totalPages > 1) { %>
-			<div class="pagination">
-				<% if (pagination.currentPage > 1) { %>
-					<a href="/records?page=1<%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link">&laquo;</a>
-					<a href="/records?page=<%= pagination.currentPage - 1 %><%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link">&lsaquo;</a>
-				<% } %>
-				
-				<% for (let i = Math.max(1, pagination.currentPage - 2); i <= Math.min(pagination.totalPages, pagination.currentPage + 2); i++) { %>
-					<a href="/records?page=<%= i %><%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link <%= i === pagination.currentPage ? 'active' : '' %>"><%= i %></a>
-				<% } %>
-				
-				<% if (pagination.currentPage < pagination.totalPages) { %>
-					<a href="/records?page=<%= pagination.currentPage + 1 %><%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link">&rsaquo;</a>
-					<a href="/records?page=<%= pagination.totalPages %><%= getColumnQueryParam() %><%= getFilterQueryParam() %>" class="pagination-link">&raquo;</a>
-				<% } %>
-			</div>
-		<% } else { %>
-			<div class="pagination"></div> <!-- Empty div to maintain flex layout -->
-		<% } %>
-	</div>
-</div>
-
 <% 
 // Helper function to generate column query parameter
 function getColumnQueryParam() {
-	// If all columns are selected, return empty string (default behavior)
-	if (columns.selected.length === columns.all.length) {
-		return '';
-	}
-	
-	// If more columns are selected than deselected, use "-" prefix
-	if (columns.selected.length > columns.all.length / 2) {
-		const deselectedColumns = columns.all.filter(col => !columns.selected.includes(col));
-		return '&columns=-' + deselectedColumns.join(',');
-	} 
-	
-	// Otherwise, just list the selected columns
-	return '&columns=' + columns.selected.join(',');
+    // If all columns are selected, return empty string (default behavior)
+    if (columns.selected.length === columns.all.length) {
+        return '';
+    }
+    
+    // If more columns are selected than deselected, use "-" prefix
+    if (columns.selected.length > columns.all.length / 2) {
+        const deselectedColumns = columns.all.filter(col => !columns.selected.includes(col));
+        return '&columns=-' + deselectedColumns.join(',');
+    } 
+    
+    // Otherwise, just list the selected columns
+    return '&columns=' + columns.selected.join(',');
 }
 
 // Helper function to generate filter query parameter
 function getFilterQueryParam() {
-	if (!filters || filters.length === 0) {
-		return '';
-	}
-	
-	let params = '';
-	filters.forEach((filter, index) => {
-		params += `&filter_column[]=${encodeURIComponent(filter.column)}`;
-		params += `&filter_operator[]=${encodeURIComponent(filter.operator)}`;
-		params += `&filter_value[]=${encodeURIComponent(filter.value)}`;
-	});
-	
-	return params;
+    if (!filters || filters.length === 0) {
+        return '';
+    }
+    
+    let params = '';
+    filters.forEach((filter, index) => {
+        params += `&filter_column[]=${encodeURIComponent(filter.column)}`;
+        params += `&filter_operator[]=${encodeURIComponent(filter.operator)}`;
+        params += `&filter_value[]=${encodeURIComponent(filter.value)}`;
+    });
+    
+    return params;
 }
-%> 
+%>
+<h2>Messwerte</h2>
+
+<!-- Control buttons -->
+<div class="list-top-bar">
+	<div class="list-info">
+		<p>Zeige <%= records.length %> von <%= pagination.total %> Messwerten</p>
+	</div>
+	<div class="control-buttons">
+		<button type="button" id="columns-button">Spaltenauswahl</button>
+		<button type="button" id="filter-button">Filtern</button>
+	</div>
+</div>
+
+<!-- Column Selection Overlay Panel -->
+<div id="columns-panel" class="overlay-panel">
+	<h3>Spaltenauswahl</h3>
+	<form action="/records" method="GET" id="columns-form">
+		<!-- Preserve existing query parameters -->
+		<input type="hidden" name="page" value="<%= pagination.currentPage %>">
+		<input type="hidden" name="limit" value="<%= pagination.limit %>">
+		
+		<div class="column-checkboxes">
+			<% columns.all.forEach(column => { %>
+				<div class="column-checkbox">
+					<input 
+						type="checkbox" 
+						id="col-<%= column %>" 
+						<%= columns.defaultDeselected.includes(column) ? 'data-default-deselected="true"' : '' %>
+						<%= columns.selected.includes(column) ? 'checked' : '' %>
+					>
+					<label for="col-<%= column %>"><%= columnCaption(column) %></label>
+				</div>
+			<% }); %>
+		</div>
+		
+		<input type="hidden" name="columns" id="columns-param" value="">
+		<div class="panel-actions">
+			<button type="button" class="cancel">Abbrechen</button>
+			<button type="submit">Anwenden</button>
+		</div>
+	</form>
+</div>
+
+<!-- Filter Overlay Panel -->
+<div id="filter-panel" class="overlay-panel">
+	<h3>Filter</h3>
+	<form action="/records" method="GET" id="filter-form">
+		<!-- Preserve existing query parameters -->
+		<input type="hidden" name="page" value="1">
+		<input type="hidden" name="limit" value="<%= pagination.limit %>">
+		<input type="hidden" name="columns" value="<%= getColumnQueryParam().replace('&columns=', '') %>">
+		
+		<div id="filter-conditions">
+			<% if (filters && filters.length > 0) { %>
+				<% filters.forEach((filter, index) => { %>
+					<div class="filter-condition" data-index="<%= index %>">
+						<select name="filter_column[]" class="filter-column">
+							<% columns.all.forEach(column => { %>
+								<option value="<%= column %>" <%= filter.column === column ? 'selected' : '' %>>
+									<%= columnCaption(column) %>
+								</option>
+							<% }); %>
+						</select>
+						<select name="filter_operator[]" class="filter-operator">
+							<% Object.entries(filterOperators).forEach(op => { %>
+								<option value="<%= op %>" <%= filter.operator === op ? 'selected' : '' %>><%= operatorCaption(op) %></option>
+							<% }); %>
+						</select>
+						<input type="text" name="filter_value[]" class="filter-value" value="<%= filter.value %>" placeholder="Wert">
+						<button type="button" class="remove-filter">Entfernen</button>
+					</div>
+				<% }); %>
+			<% } else { %>
+				<div class="filter-condition" data-index="0">
+					<select name="filter_column[]" class="filter-column">
+						<% columns.all.forEach(column => { %>
+							<option value="<%= column %>"><%= columnCaption(column) %></option>
+						<% }); %>
+					</select>
+					<select name="filter_operator[]" class="filter-operator">
+						<% Object.entries(filterOperators).forEach(op => { %>
+							<option value="<%= op %>"><%= operatorCaption(op) %></option>
+						<% }); %>
+					</select>
+					<input type="text" name="filter_value[]" class="filter-value" placeholder="Wert">
+					<button type="button" class="remove-filter">Entfernen</button>
+				</div>
+			<% } %>
+		</div>
+		
+		<div class="filter-actions">
+			<button type="button" id="add-filter">Filter hinzufügen</button>
+		</div>
+			
+		<div class="panel-actions">
+			<% if (filters && filters.length > 0) { %>
+				<a href="/records?columns=<%= getColumnQueryParam().replace('&columns=', '') %>" class="clear-filters">Filter zurücksetzen</a>
+			<% } %>
+			<button type="button" class="cancel">Abbrechen</button>
+			<button type="submit">Anwenden</button>
+		</div>
+	</form>
+</div>
+
+<%- include("records-table") %>
+
+<%- include('pagination', { 
+	pagination: pagination, 
+	path: path,
+	items: records, 
+	itemName: 'Messwerten',
+	getColumnQueryParam: getColumnQueryParam,
+	getFilterQueryParam: getFilterQueryParam
+}) %> 

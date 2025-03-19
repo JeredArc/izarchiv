@@ -2,7 +2,9 @@
 <html lang="de">
 <head>
 	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+	<meta name="format-detection" content="telephone=no">
+	<meta http-equiv="x-ms-format-detection" content="telephone=no">
 	<title>IZARchiv</title>
 	<link rel="stylesheet" href="/public/styles.css">
 	<script src="/public/app.js" defer></script>
@@ -10,13 +12,18 @@
 <body class="<%= bodyclass %>">
 	<header>
 		<div class="container">
-			<h1>IZARchiv</h1>
+			<h1><span>IZ</span><span>AR</span><span>chiv</span></h1>
 			<nav>
 				<ul>
 					<li><a href="/" class="<%= path === '/' ? 'active' : '' %>">Übersicht</a></li>
 					<li><a href="/records" class="<%= path === '/records' ? 'active' : '' %>">Messwerte</a></li>
 					<li><a href="/devices" class="<%= path === '/devices' ? 'active' : '' %>">Geräte</a></li>
 					<li><a href="/sources" class="<%= path === '/sources' ? 'active' : '' %>">Quellen</a></li>
+				</ul>
+			</nav>
+			<nav>
+				<ul>
+					<li><a href="/logout">Logout</a></li>
 				</ul>
 			</nav>
 		</div>

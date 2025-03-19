@@ -21,6 +21,7 @@ import {
 	deltaColumns,
 	multipliedColumns,
 	filterOperators,
+	alwaysShowPagination,
 } from './settings.js';
 import { columnCaption, operatorCaption } from './translations-german.js';
 import { formatDate, formatDateRelative, formatNumber } from './utils.js';
@@ -69,6 +70,7 @@ fastify.register(FastifyView, {
 		filterOperators,
 		columnCaption,
 		operatorCaption,
+		alwaysShowPagination,
 	},
 	layout: './layout',
 	viewExt: 'ejs'
@@ -83,7 +85,7 @@ fastify.get('/', async (request, reply) => {
 		records,
 		total,
 		path: '/',
-		bodyclass: 'detail'
+		bodyclass: 'detail',
 	});
 });
 
@@ -118,7 +120,7 @@ fastify.get('/device/:id', async (request, reply) => {
 	return reply.view('device-detailpage', {
 		device,
 		path: '/devices',
-		backlink: request.headers.referer?.includes('/devices') ? request.headers.referer : '/devices',
+		backlink: request.headers.referer?.startsWith?.(`http://${request.headers.host}/devices`) ? request.headers.referer : '/devices',
 		bodyclass: 'detail',
 	});
 });
@@ -154,7 +156,7 @@ fastify.get('/source/:id', async (request, reply) => {
 	return reply.view('source-detailpage', {
 		source,
 		path: '/sources',
-		backlink: request.headers.referer?.includes('/sources') ? request.headers.referer : '/sources',
+		backlink: request.headers.referer?.startsWith?.(`http://${request.headers.host}/sources`) ? request.headers.referer : '/sources',
 		bodyclass: 'detail',
 	});
 });
@@ -257,8 +259,9 @@ fastify.get('/record/:id', async (request, reply) => {
 	return reply.view('record-detailpage', { 
 		record, 
 		path: '/records',
-		backlink: request.headers.referer?.includes('/records') ? request.headers.referer : '/records',
+		backlink: request.headers.referer?.startsWith?.(`http://${request.headers.host}/records`) ? request.headers.referer : '/records',
 		bodyclass: 'detail',
+		request,
 	});
 });
 
