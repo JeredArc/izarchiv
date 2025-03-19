@@ -188,6 +188,10 @@ td { /* Handle long values in table cells */
 	padding: 6px;
 }
 
+table.keyvalue-table td {
+	max-width: calc(50vw - 29px);
+}
+
 td.unknown {
 	color: var(--unknown-color);
 }
@@ -720,7 +724,7 @@ pre.json-content {
 
 td.value:not(table.list-table > tbody > tr > td.value) > span {
 	display: inline-block;
-	min-width: 11rem;
+	min-width: min(11rem, 100%);
 	text-align: right;
 }
 
