@@ -1,20 +1,4 @@
 <% 
-// Helper function to generate column query parameter
-function getColumnQueryParam() {
-    // If all columns are selected, return empty string (default behavior)
-    if (columns.selected.length === columns.all.length) {
-        return '';
-    }
-    
-    // If more columns are selected than deselected, use "-" prefix
-    if (columns.selected.length > columns.all.length / 2) {
-        const deselectedColumns = columns.all.filter(col => !columns.selected.includes(col));
-        return '&columns=-' + deselectedColumns.join(',');
-    } 
-    
-    // Otherwise, just list the selected columns
-    return '&columns=' + columns.selected.join(',');
-}
 
 // Helper function to generate filter query parameter
 function getFilterQueryParam() {
@@ -24,9 +8,9 @@ function getFilterQueryParam() {
     
     let params = '';
     filters.forEach((filter, index) => {
-        params += `&filter_column[]=${encodeURIComponent(filter.column)}`;
-        params += `&filter_operator[]=${encodeURIComponent(filter.operator)}`;
-        params += `&filter_value[]=${encodeURIComponent(filter.value)}`;
+        params += `&filter_column=${encodeURIComponent(filter.column)}`;
+        params += `&filter_operator=${encodeURIComponent(filter.operator)}`;
+        params += `&filter_value=${encodeURIComponent(filter.value)}`;
     });
     
     return params;
@@ -37,7 +21,7 @@ function getFilterQueryParam() {
 <!-- Control buttons -->
 <div class="list-top-bar">
 	<div class="list-info">
-		<p>Zeige <%= records.length %> von <%= pagination.total %> Messwerten</p>
+		<p><%= pagination.total %> Messwerte<%= filters?.length ? `, gefiltert nach ${filters.map(f => columnCaption(f.column)).join(', ')}` : '' %></p>
 	</div>
 	<div class="control-buttons">
 		<button type="button" id="columns-button">Spaltenauswahl</button>
@@ -82,41 +66,41 @@ function getFilterQueryParam() {
 		<!-- Preserve existing query parameters -->
 		<input type="hidden" name="page" value="1">
 		<input type="hidden" name="limit" value="<%= pagination.limit %>">
-		<input type="hidden" name="columns" value="<%= getColumnQueryParam().replace('&columns=', '') %>">
+		<input type="hidden" name="columns" value="<%= decodeURIComponent(columnQueryParam.replace(/^&columns=/, '')) %>">
 		
 		<div id="filter-conditions">
 			<% if (filters && filters.length > 0) { %>
 				<% filters.forEach((filter, index) => { %>
 					<div class="filter-condition" data-index="<%= index %>">
-						<select name="filter_column[]" class="filter-column">
+						<select name="filter_column" class="filter-column">
 							<% columns.all.forEach(column => { %>
 								<option value="<%= column %>" <%= filter.column === column ? 'selected' : '' %>>
 									<%= columnCaption(column) %>
 								</option>
 							<% }); %>
 						</select>
-						<select name="filter_operator[]" class="filter-operator">
-							<% Object.entries(filterOperators).forEach(op => { %>
+						<select name="filter_operator" class="filter-operator">
+							<% filterOperators.forEach(op => { %>
 								<option value="<%= op %>" <%= filter.operator === op ? 'selected' : '' %>><%= operatorCaption(op) %></option>
 							<% }); %>
 						</select>
-						<input type="text" name="filter_value[]" class="filter-value" value="<%= filter.value %>" placeholder="Wert">
+						<input type="text" name="filter_value" class="filter-value" value="<%= filter.value %>" placeholder="Wert">
 						<button type="button" class="remove-filter">Entfernen</button>
 					</div>
 				<% }); %>
 			<% } else { %>
 				<div class="filter-condition" data-index="0">
-					<select name="filter_column[]" class="filter-column">
+					<select name="filter_column" class="filter-column">
 						<% columns.all.forEach(column => { %>
 							<option value="<%= column %>"><%= columnCaption(column) %></option>
 						<% }); %>
 					</select>
-					<select name="filter_operator[]" class="filter-operator">
-						<% Object.entries(filterOperators).forEach(op => { %>
+					<select name="filter_operator" class="filter-operator">
+						<% filterOperators.forEach(op => { %>
 							<option value="<%= op %>"><%= operatorCaption(op) %></option>
 						<% }); %>
 					</select>
-					<input type="text" name="filter_value[]" class="filter-value" placeholder="Wert">
+					<input type="text" name="filter_value" class="filter-value" placeholder="Wert">
 					<button type="button" class="remove-filter">Entfernen</button>
 				</div>
 			<% } %>
@@ -128,7 +112,7 @@ function getFilterQueryParam() {
 			
 		<div class="panel-actions">
 			<% if (filters && filters.length > 0) { %>
-				<a href="/records?columns=<%= getColumnQueryParam().replace('&columns=', '') %>" class="clear-filters">Filter zurücksetzen</a>
+				<a href="/records<%= `?limit=${pagination.limit}${columnQueryParam.replace(/^[&?]?/, '&')}` %>" class="clear-filters">Filter zurücksetzen</a>
 			<% } %>
 			<button type="button" class="cancel">Abbrechen</button>
 			<button type="submit">Anwenden</button>
@@ -143,6 +127,6 @@ function getFilterQueryParam() {
 	path: path,
 	items: records, 
 	itemName: 'Messwerten',
-	getColumnQueryParam: getColumnQueryParam,
+	columnQueryParam,
 	getFilterQueryParam: getFilterQueryParam
 }) %> 

@@ -37,7 +37,7 @@ pre {
 }
 
 /* Buttons */
-button, .btn {
+button, .btn, button:focus, .btn:focus, button:active, .btn:active {
 	font-size: 1rem;
 	font-weight: bold;
 	display: inline-block;

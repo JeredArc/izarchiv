@@ -144,7 +144,7 @@ function initColumnSelection() {
 		
 		// Collect all checked columns
 		document.querySelectorAll('.column-checkbox input').forEach(input => {
-			const columnName = input.id.replace('col-', '');
+			const columnName = input.id.replace(/^col-/, '');
 			if(input.dataset.defaultDeselected && !input.checked) return;
 			if(input.dataset.defaultDeselected) includesDefaultDeselected = true;
 			(input.checked ? selectedColumns : deselectedColumns).push(columnName);

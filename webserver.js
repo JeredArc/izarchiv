@@ -170,16 +170,16 @@ fastify.get('/records', async (request, reply) => {
 	
 	/* Process filter parameters */
 	const filters = [];
-	if (request.query.filter_column && Array.isArray(request.query.filter_column)) {
-		const columns = request.query.filter_column;
-		const operators = request.query.filter_operator || [];
-		const values = request.query.filter_value || [];
+	if ("filter_column" in request.query && "filter_operator" in request.query && "filter_value" in request.query) {
+		const columns = [request.query["filter_column"]].flat();
+		const operators = [request.query["filter_operator"]].flat();
+		const values = [request.query["filter_value"]].flat();
 		
 		for (let i = 0; i < columns.length; i++) {
 			const column = columns[i];
-			const operator = operators[i] || 'eq';
+			const operator = operators[i];
 			const value = values[i];
-			
+
 			/* Only add filter if column and value are provided */
 			if (column && value !== undefined && value !== '') {
 				filters.push({
@@ -190,6 +190,7 @@ fastify.get('/records', async (request, reply) => {
 			}
 		}
 	}
+	console.log("filters", filters, request.query);
 	
 	/* Get records first to determine available columns */
 	const { records, total } = await getRecords(db, limit, offset, filters);
@@ -203,7 +204,7 @@ fastify.get('/records', async (request, reply) => {
 		record.deltaColumnNames.forEach(key => availDeltaColumns.add(key));
 		record.customColumnNames.forEach(key => availCustomColumns.add(key));
 	});
-	
+
 	/* Base columns with record prefix plus data and delta field columns */
 	let allColumns = [
 		...recordColumns.map(col => colPreRecord + col),
@@ -213,9 +214,10 @@ fastify.get('/records', async (request, reply) => {
 	for(let customColumn of availCustomColumns) { /* Insert custom columns after their source columns */
 		allColumns.splice(allColumns.indexOf(multipliedColumns[customColumn][0]) + 1, 0, customColumn);
 	}
-	
-	let selectedColumns = allColumns.filter(col => !defaultDeselectedColumns.includes(col));
-	
+
+	let defaultSelectedColumns = allColumns.filter(col => !defaultDeselectedColumns.includes(col));
+	let selectedColumns = [...defaultSelectedColumns];
+
 	if (request.query.columns) {
 		const columnsParam = request.query.columns;
 		
@@ -227,7 +229,27 @@ fastify.get('/records', async (request, reply) => {
 			selectedColumns = columnsParam.split(',').filter(col => allColumns.includes(col));
 		}
 	}
-	
+
+	let columnQueryParam = '';
+	let selCols = [];
+	let deselCols = [];
+	let includesDefaultDeselected = false;
+	for(let col of selectedColumns) {
+		let sel = selectedColumns.includes(col);
+		let defDesel = defaultDeselectedColumns.includes(col);
+		if(defDesel && !sel) continue;
+		if(defDesel) includesDefaultDeselected = true;
+		(sel ? selCols : deselCols).push(col);
+	}
+
+	if(!includesDefaultDeselected && deselCols.length === 0) {
+		columnQueryParam = '';
+	} else if(!includesDefaultDeselected && deselCols.length < selCols.length) {
+		columnQueryParam = '&columns=-' + deselCols.map(col => encodeURIComponent(col)).join(',');
+	} else {
+		columnQueryParam = '&columns=' + selCols.map(col => encodeURIComponent(col)).join(',');
+	}
+
 	const totalPages = Math.ceil(total / limit);
 	
 	return reply.view('records-listpage', { 
@@ -241,8 +263,10 @@ fastify.get('/records', async (request, reply) => {
 		columns: {
 			all: allColumns,
 			selected: selectedColumns,
+			defaultSelected: defaultSelectedColumns,
 			defaultDeselected: defaultDeselectedColumns,
 		},
+		columnQueryParam,
 		filters,
 		path: '/records',
 		bodyclass: 'list',

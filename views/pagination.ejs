@@ -10,9 +10,7 @@ const getPageUrl = (newPage, newLimit) => {
 	const pageParam = newPage ? `page=${newPage}` : `page=${pagination.currentPage}`;
 	let url = `${baseUrl}?${pageParam}${limitParam}`;
 	
-	if (typeof getColumnQueryParam === 'function') {
-		url += getColumnQueryParam();
-	}
+	url += typeof columnQueryParam === 'string' ? columnQueryParam : '';
 	
 	if (typeof getFilterQueryParam === 'function') {
 		url += getFilterQueryParam();

@@ -8,7 +8,7 @@ import { Source } from './source.js';
 const Sqlite3 = sqlite3.verbose();
 
 const RDY_ORIGINAL_EXTENSION = ".xml";
-const SOURCE_TYPE_IZAR_FTP = "IZAR-FTP";
+const SOURCE_TYPE_FTP_IZARXML = "FTP: IZAR-XML";
 
 // Helper functions to create Promise-based versions of sqlite3 methods
 function createAsyncMethods(db) {
@@ -111,7 +111,7 @@ export async function storeFile(db, filename, buffer) {
 				AND created_at > datetime('now', '-1 hour')
 				ORDER BY created_at DESC
 				LIMIT 1
-			`, [origFilename, SOURCE_TYPE_IZAR_FTP]);
+			`, [origFilename, SOURCE_TYPE_FTP_IZARXML]);
 			
 			if (source) {
 				// Update the existing source
@@ -132,7 +132,7 @@ export async function storeFile(db, filename, buffer) {
 			// Always insert a new source for non-rdy files
 			const result = await db.runAsync(
 				"INSERT INTO sources (type, filename, data, rdysent) VALUES (?, ?, ?, ?)", 
-				[SOURCE_TYPE_IZAR_FTP, filename, buffer, 0]
+				[SOURCE_TYPE_FTP_IZARXML, filename, buffer, 0]
 			);
 			console.log(`Stored new file ${filename} in database as #${result.lastID} (${buffer.length} bytes)`);
 
@@ -299,6 +299,23 @@ async function insertRecord(db, sourceId, recordJson) {
 }
 
 
+const SQL_OP_MAP = {
+	'eq': '=',
+	'lt': '<',
+	'lte': '<=',
+	'gt': '>',
+	'gte': '>=',
+};
+const SQL_RECORD_COLUMNS_MAP = {
+	'id': 'r.id',
+	'device': 'r.device',
+	'source': 'r.source',
+	'time': 'r.time',
+	'deviceName': 'd.name',
+	'sourceFilename': 's.filename',
+	'sourceType': 's.type',
+};
+
 // Get processed records
 export async function getRecords(db, limit = 100, offset = 0, filters = []) {
 	try {
@@ -311,142 +328,24 @@ export async function getRecords(db, limit = 100, offset = 0, filters = []) {
 			
 			filters.forEach(filter => {
 				const { column, operator, value } = filter;
+
+				const sqlOp = SQL_OP_MAP[operator] || '=';
 				
 				// Get the prefix and field name
 				const prefix = column.charAt(0);
 				const fieldName = column.substring(1);
 				
-				// Determine if this is a base column or a nested JSON field
-				let sqlCondition;
-				
-				if (prefix === colPreRecord) {
-					// Direct record properties
-					if (['id', 'device', 'source', 'time'].includes(fieldName)) {
-						// Base columns
-						switch (operator) {
-							case 'eq':
-								sqlCondition = `r.${fieldName} = ?`;
-								whereParams.push(value);
-								break;
-							case 'lt':
-								sqlCondition = `r.${fieldName} < ?`;
-								whereParams.push(value);
-								break;
-							case 'lte':
-								sqlCondition = `r.${fieldName} <= ?`;
-								whereParams.push(value);
-								break;
-							case 'gt':
-								sqlCondition = `r.${fieldName} > ?`;
-								whereParams.push(value);
-								break;
-							case 'gte':
-								sqlCondition = `r.${fieldName} >= ?`;
-								whereParams.push(value);
-								break;
-						}
-					} else if (fieldName === 'deviceName') {
-						// Device name column
-						switch (operator) {
-							case 'eq':
-								sqlCondition = `d.name = ?`;
-								whereParams.push(value);
-								break;
-							case 'lt':
-								sqlCondition = `d.name < ?`;
-								whereParams.push(value);
-								break;
-							case 'lte':
-								sqlCondition = `d.name <= ?`;
-								whereParams.push(value);
-								break;
-							case 'gt':
-								sqlCondition = `d.name > ?`;
-								whereParams.push(value);
-								break;
-							case 'gte':
-								sqlCondition = `d.name >= ?`;
-								whereParams.push(value);
-								break;
-						}
-					} else if (fieldName === 'sourceFilename' || fieldName === 'sourceType') {
-						// Source columns
-						const sourceCol = fieldName === 'sourceFilename' ? 'filename' : 'type';
-						switch (operator) {
-							case 'eq':
-								sqlCondition = `s.${sourceCol} = ?`;
-								whereParams.push(value);
-								break;
-							case 'lt':
-								sqlCondition = `s.${sourceCol} < ?`;
-								whereParams.push(value);
-								break;
-							case 'lte':
-								sqlCondition = `s.${sourceCol} <= ?`;
-								whereParams.push(value);
-								break;
-							case 'gt':
-								sqlCondition = `s.${sourceCol} > ?`;
-								whereParams.push(value);
-								break;
-							case 'gte':
-								sqlCondition = `s.${sourceCol} >= ?`;
-								whereParams.push(value);
-								break;
-						}
-					}
+				if (prefix === colPreRecord && fieldName in SQL_RECORD_COLUMNS_MAP) {
+					conditions.push(`${SQL_RECORD_COLUMNS_MAP[fieldName]} ${sqlOp} ?`);
+					whereParams.push(value);
 				} else if (prefix === colPreData) {
 					// JSON fields in data
-					switch (operator) {
-						case 'eq':
-							sqlCondition = `JSON_EXTRACT(r.data, '$.${fieldName}') = ?`;
-							whereParams.push(value);
-							break;
-						case 'lt':
-							sqlCondition = `JSON_EXTRACT(r.data, '$.${fieldName}') < ?`;
-							whereParams.push(value);
-							break;
-						case 'lte':
-							sqlCondition = `JSON_EXTRACT(r.data, '$.${fieldName}') <= ?`;
-							whereParams.push(value);
-							break;
-						case 'gt':
-							sqlCondition = `JSON_EXTRACT(r.data, '$.${fieldName}') > ?`;
-							whereParams.push(value);
-							break;
-						case 'gte':
-							sqlCondition = `JSON_EXTRACT(r.data, '$.${fieldName}') >= ?`;
-							whereParams.push(value);
-							break;
-					}
+					conditions.push(`JSON_EXTRACT(r.data, ${escapeJsonPath(fieldName)}) ${sqlOp} ?`);
+					whereParams.push(value);
 				} else if (prefix === colPreDelta) {
 					// JSON fields in delta
-					switch (operator) {
-						case 'eq':
-							sqlCondition = `JSON_EXTRACT(r.delta, '$.${fieldName}') = ?`;
-							whereParams.push(value);
-							break;
-						case 'lt':
-							sqlCondition = `JSON_EXTRACT(r.delta, '$.${fieldName}') < ?`;
-							whereParams.push(value);
-							break;
-						case 'lte':
-							sqlCondition = `JSON_EXTRACT(r.delta, '$.${fieldName}') <= ?`;
-							whereParams.push(value);
-							break;
-						case 'gt':
-							sqlCondition = `JSON_EXTRACT(r.delta, '$.${fieldName}') > ?`;
-							whereParams.push(value);
-							break;
-						case 'gte':
-							sqlCondition = `JSON_EXTRACT(r.delta, '$.${fieldName}') >= ?`;
-							whereParams.push(value);
-							break;
-					}
-				}
-				
-				if (sqlCondition) {
-					conditions.push(sqlCondition);
+					conditions.push(`JSON_EXTRACT(r.delta, ${escapeJsonPath(fieldName)}) ${sqlOp} ?`);
+					whereParams.push(value);
 				}
 			});
 			

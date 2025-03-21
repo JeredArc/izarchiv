@@ -29,11 +29,11 @@ export const columnCaption = (column) => {
 
 // Translation dictionary for operators
 const operatorTranslations = {
-	'eq': 'Gleich',
-	'lt': 'Kleiner als',
-	'lte': 'Kleiner oder gleich',
-	'gt': 'Größer als',
-	'gte': 'Größer oder gleich'
+	'eq': '=',
+	'lt': '<',
+	'lte': '≤',
+	'gt': '>',
+	'gte': '≥'
 };
 
 export const operatorCaption = (operator) => {
