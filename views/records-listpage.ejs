@@ -1,27 +1,9 @@
-<% 
-
-// Helper function to generate filter query parameter
-function getFilterQueryParam() {
-    if (!filters || filters.length === 0) {
-        return '';
-    }
-    
-    let params = '';
-    filters.forEach((filter, index) => {
-        params += `&filter_column=${encodeURIComponent(filter.column)}`;
-        params += `&filter_operator=${encodeURIComponent(filter.operator)}`;
-        params += `&filter_value=${encodeURIComponent(filter.value)}`;
-    });
-    
-    return params;
-}
-%>
 <h2>Messwerte</h2>
 
 <!-- Control buttons -->
 <div class="list-top-bar">
 	<div class="list-info">
-		<p><%= pagination.total %> Messwerte<%= filters?.length ? `, gefiltert nach ${filters.map(f => columnCaption(f.column)).join(', ')}` : '' %></p>
+		<p><%= !filters.length && pagination.total === pagination.fullTotal ? `${pagination.total} Messwerte insgesamt` : `${pagination.total} von ${pagination.fullTotal} Messwerten${filters.length ? `, gefiltert nach ${filters.map(f => f.getCaption()).join(', ')}` : ''}` %></p>
 	</div>
 	<div class="control-buttons">
 		<button type="button" id="columns-button">Spaltenauswahl</button>
@@ -52,6 +34,11 @@ function getFilterQueryParam() {
 		</div>
 		
 		<input type="hidden" name="columns" id="columns-param" value="">
+		<% filters.forEach((filter, index) => { %>
+			<input type="hidden" name="filter_column" value="<%= filter.column %>">
+			<input type="hidden" name="filter_operator" value="<%= filter.operator %>">
+			<input type="hidden" name="filter_value" value="<%= filter.value %>">
+		<% }); %>
 		<div class="panel-actions">
 			<button type="button" class="cancel">Abbrechen</button>
 			<button type="submit">Anwenden</button>
@@ -69,7 +56,7 @@ function getFilterQueryParam() {
 		<input type="hidden" name="columns" value="<%= decodeURIComponent(columnQueryParam.replace(/^&columns=/, '')) %>">
 		
 		<div id="filter-conditions">
-			<% if (filters && filters.length > 0) { %>
+			<% if (filters.length > 0) { %>
 				<% filters.forEach((filter, index) => { %>
 					<div class="filter-condition" data-index="<%= index %>">
 						<select name="filter_column" class="filter-column">
@@ -111,7 +98,7 @@ function getFilterQueryParam() {
 		</div>
 			
 		<div class="panel-actions">
-			<% if (filters && filters.length > 0) { %>
+			<% if (filters.length > 0) { %>
 				<a href="/records<%= `?limit=${pagination.limit}${columnQueryParam.replace(/^[&?]?/, '&')}` %>" class="clear-filters">Filter zurücksetzen</a>
 			<% } %>
 			<button type="button" class="cancel">Abbrechen</button>
@@ -128,5 +115,5 @@ function getFilterQueryParam() {
 	items: records, 
 	itemName: 'Messwerten',
 	columnQueryParam,
-	getFilterQueryParam: getFilterQueryParam
+	filterQueryParam,
 }) %> 

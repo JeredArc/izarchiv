@@ -14,27 +14,22 @@ let columns = [
 	colPreSource + 'filename',
 	colPreSource + 'rdysent',
 	colPreSource + 'recordCount',
+	colPreSource + 'deviceIds',
 ];
 %>
 <div class="table-container">
 	<table class="list-table">
 		<thead>
 			<tr>
-				<!-- ID column is always displayed -->
-				<th><div class="th-content">#</div></th>
-				<!-- Dynamic columns -->
-				<% columns.forEach(column => { %>
-					<th><div class="th-content"><%= columnCaption(column) %></div></th>
+				<% [colPreSource + 'id', ...columns].forEach(column => { %>
+					<th><div class="th-content"><%= columnCaption(column, true) %></div></th>
 				<% }); %>
 			</tr>
 		</thead>
 		<tbody>
 			<% sources.forEach(source => { %>
 				<tr>
-					<!-- ID column is always displayed -->
-					<td><a href="<%= source.columnLink(colPreSource + 'id') %>"><%= source.id %></a></td>
-					<!-- Dynamic columns -->
-					<% columns.forEach(column => { %>
+					<% [colPreSource + 'id', ...columns].forEach(column => { %>
 						<% let { value, link, classes } = source.columnOutput(column, true); %>
 						<td class="<%= classes.join(' ') %>"><span>
 							<% if (link) { %>

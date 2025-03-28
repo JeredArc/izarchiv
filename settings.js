@@ -16,7 +16,7 @@ export const ftpconfig = {
 /* Web server configuration */
 export const webserver = {
 	enabled: true,
-	port: 3000,
+	webserverPort: 3000, /* queried by "IZARchiv starten.vbs" */
 	// host: '127.0.0.1',
 	host: '0.0.0.0'
 };
@@ -88,10 +88,12 @@ export const columnFormatters = { /* column => formatter function (value, record
 
 	[colPreDevice + 'recordCount']: 'number',
 	[colPreDevice + 'created_at']: 'timestamp',
+	[colPreDevice + 'favorite_at']: value => value ? '♥' : '-',
 
 	[colPreSource + 'recordCount']: 'number',
 	[colPreSource + 'created_at']: 'timestamp',
 	[colPreSource + 'rdysent']: value => value === 1 ? '✓' : value === 0 ? '✗' : '-',
+	[colPreSource + 'deviceIds']: value => value ? value.map(id => `#${id}`).join(', ') : '-',
 }
 
 export const columnFractionDigits = {
@@ -103,8 +105,26 @@ export const columnFractionDigits = {
 
 export const filterOperators = [
 	'eq',
+	'ne',
+	'contains',
+	'not contains',
 	'lt',
 	'lte',
 	'gt',
-	'gte'
+	'gte',
+];
+
+export const idColumns = [
+	colPreRecord + 'id',
+	colPreRecord + 'device',
+	colPreRecord + 'source',
+	colPreDevice + 'id',
+	colPreSource + 'id',
+];
+
+export const slimColumns = [
+	colPreRecord + 'id',
+	colPreDevice + 'id',
+	colPreDevice + 'favorite_at',
+	colPreSource + 'id',
 ];

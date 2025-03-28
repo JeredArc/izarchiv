@@ -2,21 +2,15 @@
 	<table class="list-table">
 		<thead>
 			<tr>
-				<!-- ID column is always displayed -->
-				<th><div class="th-content">#</div></th>
-				<!-- Dynamic columns -->
-				<% columns.selected.forEach(column => { %>
-					<th><div class="th-content"><%= columnCaption(column) %></div></th>
+				<% [colPreRecord + 'id', ...columns.selected].forEach(column => { %>
+					<th><div class="th-content"><%= columnCaption(column, true) %></div></th>
 				<% }); %>
 			</tr>
 		</thead>
 		<tbody>
 			<% records.forEach(record => { %>
 				<tr>
-					<!-- ID column is always displayed -->
-					<td><a href="<%= record.columnLink(colPreRecord + 'id') %>"><%= record.id %></a></td>
-					<!-- Dynamic columns -->
-					<% columns.selected.forEach(column => {
+					<% [colPreRecord + 'id', ...columns.selected].forEach(column => {
 						let { value, link, classes } = record.columnOutput(column, true);
 						%>
 						<td class="<%= classes.join(' ') %>"><span>

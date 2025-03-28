@@ -2,7 +2,6 @@
 
 
 # records:
-- [ ] filtering (not yet working)
 - [ ] relative dates with filtering
 - [ ] reducing of values
 
@@ -18,13 +17,10 @@
 - [ ] manually adding sources: IZAR XML, IZAR XLS, MBUS, JSON
 
 # devices:
-- [ ] device favourites -> dashboard
-- [ ] device renaming
+- [ ] device editing: name, description, favorite, overview_columns
 
 # general:
 - [ ] Webserver authentication (static username and password in settings.js)
-
-- [ ] dashboard
 
 - [ ] serve those files just uploaded in the current connection
 
@@ -34,7 +30,9 @@
 # done:
 - [x] delta calculation (not working)
 - [x] date timezone handling
-
+- [x] filtering (not yet working)
+- [x] dashboard
+- [x] device favourites -> dashboard
 
 
 reduce values to one per hour:

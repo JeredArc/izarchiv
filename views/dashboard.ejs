@@ -1,15 +1,29 @@
 <h2>Dashboard</h2>
 
+<% favoriteDevices.forEach(device => { %>
+	<div class="detail-section collapsible">
+		<h3>Aktueller Wert für Gerät  <a href="/device/<%= device.id %>"><%= device.name %></a>   <a href="/records?filter_column=<%= colPreRecord + 'device' %>&filter_operator=eq&filter_value=<%= device.id %>" class="link-small">Alle anzeigen</a></h3>
+		<div class="collapsible-content">
+			<% if (device.newestRecord) { %>
+				<%- include("record-summary", { record: device.newestRecord, hideColumns: [colPreRecord + 'deviceName'] }) %>
+			<% } else { %>
+				<p class="no-data">Kein Messwert gefunden</p>
+			<% } %>
+		</div>
+	</div>
+<% }); %>
+
+
 <div class="detail-section collapsible">
-	<h3>Aktuellste Messwerte  (<%= records.length %> von <%= total %> Messwerten insgesamt)</h3>
+	<h3>Zuletzt hinzugefügte Messwerte  (<%= recentRecords.length %> von <%= total %> Messwerten insgesamt)</h3>
 
 	<div class="collapsible-content">
 		<%- include("records-table", {
-			records: records,
+			records: recentRecords,
 			columns: {
 				selected: [
 					colPreRecord + 'time', colPreRecord + 'deviceName', colPreRecord + 'sourceName',
-					...new Set(records.flatMap(record => record.deviceOverviewColumns))
+					...new Set(recentRecords.flatMap(record => record.deviceOverviewColumns))
 				],
 			}
 		}) %>

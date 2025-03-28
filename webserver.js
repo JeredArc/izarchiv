@@ -4,7 +4,7 @@ import FastifyView from '@fastify/view';
 import FastifyFormbody from '@fastify/formbody';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getRecord, getRecords, getDevices, getDevice, getSources, getSource } from './db.js';
+import { getRecord, getRecords, getDevices, getDevice, getSources, getSource, getFavoriteDevices } from './db.js';
 import { 
 	webserver, 
 	defaultLocale, 
@@ -22,9 +22,11 @@ import {
 	multipliedColumns,
 	filterOperators,
 	alwaysShowPagination,
+	idColumns,
 } from './settings.js';
 import { columnCaption, operatorCaption } from './translations-german.js';
 import { formatDate, formatDateRelative, formatNumber } from './utils.js';
+import { Filter } from './filter.js';
 import ejs from 'ejs';
 
 // Convert ESM __dirname
@@ -71,19 +73,32 @@ fastify.register(FastifyView, {
 		columnCaption,
 		operatorCaption,
 		alwaysShowPagination,
+		idColumns,
+		izarchivVersion: process.env.npm_package_version,
 	},
 	layout: './layout',
 	viewExt: 'ejs'
 });
 
+/* version route */
+fastify.get('/izarchiv-version', async (request, reply) => {
+	return reply
+		.header('Content-Type', 'text/plain')
+		.send(`IZARchiv ${process.env.npm_package_version}`);
+});
+
+
 let db;
 
 /* dashboard routes */
 fastify.get('/', async (request, reply) => {
-	const { records, total } = await getRecords(db, 10);
+	const { records, total, fullTotal } = await getRecords(db, 10, 0, [], true);
+	const favoriteDevices = await getFavoriteDevices(db);
 	return reply.view('dashboard', {
-		records,
+		recentRecords: records,
 		total,
+		fullTotal,
+		favoriteDevices,
 		path: '/',
 		bodyclass: 'detail',
 	});
@@ -181,19 +196,14 @@ fastify.get('/records', async (request, reply) => {
 			const value = values[i];
 
 			/* Only add filter if column and value are provided */
-			if (column && value !== undefined && value !== '') {
-				filters.push({
-					column,
-					operator,
-					value
-				});
+			if (column && value !== undefined) {
+				filters.push(new Filter(column, operator, value));
 			}
 		}
 	}
-	console.log("filters", filters, request.query);
 	
-	/* Get records first to determine available columns */
-	const { records, total } = await getRecords(db, limit, offset, filters);
+	/* Get records first to determine available columns. filters might get modified, removing invalid filters */
+	const { records, total, fullTotal } = await getRecords(db, limit, offset, filters);
 	
 	/* Collect all unique keys from data and delta fields with appropriate prefixes */
 	const availDataColumns = new Set();
@@ -214,6 +224,7 @@ fastify.get('/records', async (request, reply) => {
 	for(let customColumn of availCustomColumns) { /* Insert custom columns after their source columns */
 		allColumns.splice(allColumns.indexOf(multipliedColumns[customColumn][0]) + 1, 0, customColumn);
 	}
+	for(let f of filters) if(!allColumns.includes(f.column)) allColumns.push(f.column);
 
 	let defaultSelectedColumns = allColumns.filter(col => !defaultDeselectedColumns.includes(col));
 	let selectedColumns = [...defaultSelectedColumns];
@@ -234,14 +245,13 @@ fastify.get('/records', async (request, reply) => {
 	let selCols = [];
 	let deselCols = [];
 	let includesDefaultDeselected = false;
-	for(let col of selectedColumns) {
+	for(let col of allColumns) {
 		let sel = selectedColumns.includes(col);
 		let defDesel = defaultDeselectedColumns.includes(col);
 		if(defDesel && !sel) continue;
 		if(defDesel) includesDefaultDeselected = true;
 		(sel ? selCols : deselCols).push(col);
 	}
-
 	if(!includesDefaultDeselected && deselCols.length === 0) {
 		columnQueryParam = '';
 	} else if(!includesDefaultDeselected && deselCols.length < selCols.length) {
@@ -249,6 +259,8 @@ fastify.get('/records', async (request, reply) => {
 	} else {
 		columnQueryParam = '&columns=' + selCols.map(col => encodeURIComponent(col)).join(',');
 	}
+
+	let filterQueryParam = filters.map(filter => filter.getQueryParam()).join('');
 
 	const totalPages = Math.ceil(total / limit);
 	
@@ -258,7 +270,8 @@ fastify.get('/records', async (request, reply) => {
 			currentPage: page,
 			totalPages,
 			limit,
-			total
+			total,
+			fullTotal,
 		},
 		columns: {
 			all: allColumns,
@@ -267,6 +280,7 @@ fastify.get('/records', async (request, reply) => {
 			defaultDeselected: defaultDeselectedColumns,
 		},
 		columnQueryParam,
+		filterQueryParam,
 		filters,
 		path: '/records',
 		bodyclass: 'list',
@@ -297,7 +311,7 @@ export async function startWebServer(database) {
 	
 	/* Set server address and port from settings */
 	await fastify.listen({ 
-		port: webserver.port, 
+		port: webserver.webserverPort, 
 		host: webserver.host 
 	});
 	

@@ -5,6 +5,7 @@
 	
 <%
 let columns = [
+	colPreDevice + 'favorite_at',
 	colPreDevice + 'address',
 	colPreDevice + 'name',
 	colPreDevice + 'description',
@@ -34,10 +35,10 @@ let columns = [
 	
 <div class="detail-section">
 	<% if (device.newestRecord) { %>
-		<h3>Aktuellster Messwert   <a href="/record/<%= device.newestRecord.id %>" class="link-small">#<%= device.newestRecord.id %></a></h3>
+		<h3>Aktueller Messwert   <a href="/record/<%= device.newestRecord.id %>" class="link-small">#<%= device.newestRecord.id %></a></h3>
 		<%- include("record-summary", { record: device.newestRecord, hideColumns: [colPreRecord + 'deviceName'] }) %>
 	<% } else { %>
-		<h3>Aktuellster Messwert</h3>
+		<h3>Aktueller Messwert</h3>
 		<p class="no-data">Kein Messwert gefunden</p>
 	<% } %>
 </div>
@@ -54,7 +55,7 @@ let columns = [
 		
 <div class="detail-section collapsible">
 	<% if (device.newestRecords && device.newestRecords.length > 0) { %>
-		<h3>Aktuellste Messwerte  (<%= device.newestRecords.length %> von <%= device.recordCount %>)   <a href="/records?device=<%= device.id %>" class="link-small">Alle anzeigen</a></h3>
+		<h3>Aktuelle Messwerte  (<%= device.newestRecords.length %> von <%= device.recordCount %>)   <a href="/records?filter_column=<%= colPreRecord + 'device' %>&filter_operator=eq&filter_value=<%= device.id %>" class="link-small">Alle anzeigen</a></h3>
 		<div class="collapsible-content">
 			<%- include("records-table", {
 				records: device.newestRecords,
@@ -67,7 +68,7 @@ let columns = [
 			}) %>
 		</div>
 	<% } else { %>
-		<h3>Aktuellste Messwerte</h3>
+		<h3>Aktuelle Messwerte</h3>
 		<div class="collapsible-content">
 			<p class="no-data">Keine Messwerte gefunden</p>
 		</div>

@@ -185,7 +185,12 @@ td { /* Handle long values in table cells */
 	max-width: 225px;
 	overflow-x: auto;
 	white-space: nowrap;
-	padding: 6px;
+	padding: 0 6px; /* no padding at top and bottom, so scroll-bared cells do not extend height */
+}
+td:first-child {
+	/* define the top/bottom padding only on the first cell */
+	padding-top: 6px;
+	padding-bottom: 6px;
 }
 
 table.keyvalue-table td {
@@ -199,7 +204,7 @@ td.unknown {
 tr:hover {
 	background-color: var(--background-color);
 }
-tr:hover:not(:has(a:hover))>td:first-child>a {
+tr:hover:not(:has(a:hover))>td:first-child a {
 	color: var(--secondary-color) !important;
 }
 
@@ -385,7 +390,7 @@ body.list h2 {
 	white-space: nowrap; /* Prevent wrapping */
 }
 
-table.list-table>tbody>tr>td {
+table.list-table>tbody>tr>td:not(.slim) {
 	min-width: 4rem;
 }
 
@@ -406,7 +411,7 @@ body.list .table-container {
 	margin: 1rem 0;
 	flex-wrap: wrap;
 	gap: 0.5rem;
-    min-height: 2rem;
+    min-height: 2.4rem;
 }
 
 .list-info {
@@ -418,6 +423,10 @@ body.list .table-container {
 	display: flex;
 	gap: 0.5rem;
 	align-items: center;
+}
+
+.control-buttons button.modified:after {
+	content: ' *';
 }
 
 

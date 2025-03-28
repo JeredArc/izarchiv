@@ -44,7 +44,7 @@ function createAsyncMethods(db) {
 
 function escapeJsonPath(...parts) {
 	/* escaping within quotes is not implemented in sqlite, which doesn't allow keys with both dot/opening-bracket AND doube-quote in it */
-	return "'$." + parts.map(p => p.includes(".") || p.includes("[") ? '"' + p.replace(/"/g, '') + '"' : p).join(".") + "'";
+	return "'$." + parts.map(p => p.includes(".") || p.includes("[") ? '"' + p.replace(/["']/g, '') + '"' : p.replace(/'/g, '')).join(".") + "'";
 }
 
 // Initialize the database
@@ -59,7 +59,8 @@ export async function initDatabase(dbfile) {
 			name TEXT,
 			description TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			overview_columns JSON
+			overview_columns JSON,
+			favorite_at DATETIME DEFAULT NULL
 		)
 	`);
 	await db.runAsync(`
@@ -75,6 +76,7 @@ export async function initDatabase(dbfile) {
 			rdysent BOOLEAN DEFAULT NULL,
 			filename TEXT,
 			data BLOB,
+			devices JSON,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)
 	`);
@@ -91,6 +93,19 @@ export async function initDatabase(dbfile) {
 			FOREIGN KEY (device) REFERENCES devices(id),
 			FOREIGN KEY (source) REFERENCES sources(id)
 		)
+	`);
+
+	/* temporary defaults (TODO: remove when implemented) */
+	await db.runAsync(`
+		UPDATE devices
+		SET overview_columns='[":Volumen [l]","^∆ Volumen [l/s]","=Volumens-Durchfluss [l/s]"]'
+		WHERE address='75454808';
+	`);
+
+	await db.runAsync(`
+		UPDATE devices
+		SET favorite_at=CURRENT_TIMESTAMP
+		WHERE address='75454808' AND favorite_at IS NULL;
 	`);
 
 	console.log(`Database initialized: ${dbfile}`);
@@ -153,12 +168,16 @@ async function processFile(db, data, sourceId) {
 		
 		// Parse the XML using the function from mbus.js
 		const parsedData = parseIzarXml(xmlContent);
+		const recordIds = [];
+		const deviceIds = new Set();
 		
 		if (parsedData?.records?.length > 0) {
 			// Store each record in the database
 			for (const record of parsedData.records) {
 				const recordJson = JSON.stringify(record);
-				await insertRecord(db, sourceId, recordJson);
+				let { recordId, deviceId } = await insertRecord(db, sourceId, recordJson);
+				recordIds.push(recordId);
+				deviceIds.add(deviceId);
 			}
 
 			console.log(`Successfully processed ${parsedData.records.length} records from source #${sourceId}`);
@@ -168,6 +187,12 @@ async function processFile(db, data, sourceId) {
 		}
 		if (parsedData?.errors?.length > 0) {
 			console.warn(`Errors found in source ID ${sourceId}:\n${parsedData.errors.map(e => e.error).join("\n")}`);
+		}
+
+		if(deviceIds.size > 0) {
+			await db.runAsync(`
+				UPDATE sources SET devices = ? WHERE id = 	?
+			`, [JSON.stringify(Array.from(deviceIds)), sourceId]);
 		}
 	} catch (err) {
 		console.error(`Error processing file: ${err.message}`);
@@ -295,29 +320,33 @@ async function insertRecord(db, sourceId, recordJson) {
 	}
 	
 	console.log(`Created record #${result.lastID} from source #${sourceId} for device ${deviceAddress}`);
-	return result;
+	return { recordId: result.lastID, deviceId: device.id };
 }
 
 
 const SQL_OP_MAP = {
 	'eq': '=',
+	'ne': '!=',
+	'contains': 'LIKE',
+	'not contains': 'NOT LIKE',
 	'lt': '<',
 	'lte': '<=',
 	'gt': '>',
 	'gte': '>=',
 };
-const SQL_RECORD_COLUMNS_MAP = {
-	'id': 'r.id',
-	'device': 'r.device',
-	'source': 'r.source',
-	'time': 'r.time',
-	'deviceName': 'd.name',
-	'sourceFilename': 's.filename',
-	'sourceType': 's.type',
+const SQL_COLUMNS_MAP = {
+	[colPreRecord + 'id']: 'r.id',
+	[colPreRecord + 'device']: 'r.device',
+	[colPreRecord + 'source']: 'r.source',
+	[colPreRecord + 'time']: 'r.time',
+	[colPreRecord + 'deviceName']: 'd.name',
+	[colPreRecord + 'sourceName']: "COALESCE(s.filename, s.type, 'Unbekannt')",
+	[colPreRecord + 'sourceFilename']: 's.filename',
+	[colPreRecord + 'sourceType']: 's.type',
 };
 
 // Get processed records
-export async function getRecords(db, limit = 100, offset = 0, filters = []) {
+export async function getRecords(db, limit = 100, offset = 0, filters = [], useRecentInsteadOfNewest = false) {
 	try {
 		let whereClause = '';
 		let whereParams = [];
@@ -326,35 +355,45 @@ export async function getRecords(db, limit = 100, offset = 0, filters = []) {
 		if (filters && filters.length > 0) {
 			const conditions = [];
 			
-			filters.forEach(filter => {
+			const removeFilters = [];
+			for(let filter of filters) {
 				const { column, operator, value } = filter;
 
 				const sqlOp = SQL_OP_MAP[operator] || '=';
 				
-				// Get the prefix and field name
 				const prefix = column.charAt(0);
 				const fieldName = column.substring(1);
-				
-				if (prefix === colPreRecord && fieldName in SQL_RECORD_COLUMNS_MAP) {
-					conditions.push(`${SQL_RECORD_COLUMNS_MAP[fieldName]} ${sqlOp} ?`);
-					whereParams.push(value);
-				} else if (prefix === colPreData) {
-					// JSON fields in data
-					conditions.push(`JSON_EXTRACT(r.data, ${escapeJsonPath(fieldName)}) ${sqlOp} ?`);
-					whereParams.push(value);
-				} else if (prefix === colPreDelta) {
-					// JSON fields in delta
-					conditions.push(`JSON_EXTRACT(r.delta, ${escapeJsonPath(fieldName)}) ${sqlOp} ?`);
-					whereParams.push(value);
+
+				let fieldQuery =
+					(column in SQL_COLUMNS_MAP) ? SQL_COLUMNS_MAP[column] :
+					(prefix === colPreData) ? `JSON_EXTRACT(r.data, ${escapeJsonPath(fieldName)})` : /* JSON fields in data */
+					(prefix === colPreDelta) ? `JSON_EXTRACT(r.delta, ${escapeJsonPath(fieldName)})` : /* JSON fields in delta */
+					null;
+
+				if(fieldQuery) {
+					if(operator === 'eq' && value === '' || operator === 'ne' && value !== '') {
+						conditions.push(`(${fieldQuery} ${sqlOp} ? OR ${fieldQuery} IS NULL)`);
+						whereParams.push(value);
+					} else if(operator === 'ne' && value === '' || operator === 'eq' && value !== '') {
+						conditions.push(`(${fieldQuery} ${sqlOp} ? AND ${fieldQuery} IS NOT NULL)`);
+						whereParams.push(value);
+					} else {
+						conditions.push(`${fieldQuery} ${sqlOp} ?`);
+						whereParams.push(sqlOp.includes('LIKE') ? `%${value.replaceAll(/\*/g, '%')}%` : value);
+					}
 				}
-			});
+				else {
+					removeFilters.push(filter);
+				}
+			}
+			filters.splice(0, filters.length, ...filters.filter(f => !removeFilters.includes(f)));
 			
 			if (conditions.length > 0) {
 				whereClause = `WHERE ${conditions.join(' AND ')}`;
 			}
 		}
 		
-		// Get total count first
+		// Get total counts first
 		const countResult = await db.getAsync(`
 			SELECT COUNT(*) as total
 			FROM records r
@@ -362,6 +401,10 @@ export async function getRecords(db, limit = 100, offset = 0, filters = []) {
 			JOIN devices d ON r.device = d.id
 			${whereClause}
 		`, whereParams);
+		const fullCountResult = !whereClause ? countResult : await db.getAsync(`
+			SELECT COUNT(*) as total
+			FROM records r
+		`);
 		
 		// Get paginated records
 		const records = await db.allAsync(`
@@ -370,13 +413,14 @@ export async function getRecords(db, limit = 100, offset = 0, filters = []) {
 			JOIN devices d ON r.device = d.id
 			JOIN sources s ON r.source = s.id
 			${whereClause}
-			ORDER BY r.time DESC, r.id DESC
+			ORDER BY ${useRecentInsteadOfNewest ? 's.created_at DESC, ' : ''}r.time DESC, r.id DESC
 			LIMIT ? OFFSET ?
 		`, [...whereParams, limit, offset]);
 		
 		return {
 			records: records.map(record => new Record(record)),
-			total: countResult.total
+			total: countResult.total,
+			fullTotal: fullCountResult.total,
 		};
 	} catch (err) {
 		console.error(`Database error: ${err.message}`);
@@ -470,7 +514,7 @@ export async function getDevice(db, id) {
 
 		let result = new Device(device);
 		
-		// Get the most recent records for this device
+		// Get the newest and most recent records for this device
 		const newestRecords = await db.allAsync(`
 			SELECT r.id, r.device, r.source, r.time, r.data, r.delta, d.name as deviceName, d.overview_columns as deviceOverviewColumns, (COALESCE(s.filename, s.type, 'Unbekannt')) as sourceName
 			FROM records r
@@ -501,6 +545,48 @@ export async function getDevice(db, id) {
 	}
 }
 
+// Get all favorite devices with their newest record
+export async function getFavoriteDevices(db) {
+	try {
+		const devices = await db.allAsync(`
+			SELECT d.*, COUNT(r.id) as recordCount
+			FROM devices d
+			LEFT JOIN records r ON d.id = r.device
+			WHERE d.favorite_at IS NOT NULL
+			GROUP BY d.id
+			ORDER BY d.favorite_at DESC
+		`);
+		
+		// Create Device objects with the data
+		const favoriteDevices = [];
+		for (const device of devices) {
+			const deviceObj = new Device(device);
+			
+			// Get the newest record for this device
+			const newestRecord = await db.getAsync(`
+				SELECT r.id, r.device, r.source, r.time, r.data, r.delta, d.name as deviceName, d.overview_columns as deviceOverviewColumns, (COALESCE(s.filename, s.type, 'Unbekannt')) as sourceName
+				FROM records r
+				JOIN sources s ON r.source = s.id
+				JOIN devices d ON r.device = d.id
+				WHERE r.device = ?
+				ORDER BY r.time DESC, r.id DESC
+				LIMIT 1
+			`, [device.id]);
+			
+			if (newestRecord) {
+				deviceObj.newestRecord = new Record(newestRecord);
+			}
+			
+			favoriteDevices.push(deviceObj);
+		}
+		
+		return favoriteDevices;
+	} catch (err) {
+		console.error(`Database error: ${err.message}`);
+		throw err;
+	}
+}
+
 // Get all sources
 export async function getSources(db, limit = 100, offset = 0) {
 	try {
@@ -512,7 +598,7 @@ export async function getSources(db, limit = 100, offset = 0) {
 		
 		// Get paginated sources
 		const sources = await db.allAsync(`
-			SELECT s.id, s.type, s.rdysent, s.filename, s.created_at, COUNT(r.id) as recordCount
+			SELECT s.id, s.type, s.rdysent, s.filename, s.created_at, s.devices, COUNT(r.id) as recordCount
 			FROM sources s
 			LEFT JOIN records r ON s.id = r.source
 			GROUP BY s.id

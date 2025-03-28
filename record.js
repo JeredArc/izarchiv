@@ -91,17 +91,17 @@ export class Record {
 		let value = raw;
 		let classes = ['value'];
 		let link = this.columnLink(column);
-		if(column in columnFormatters) {
-			value = applyColumnFormatter(column, value, isList, classes);
-		}
-		else if(typeof value === 'number') {
-			classes.push('number');
-			value = formatNumber(value, column);
-		} else if(typeof value === 'object' && value !== null) {
-			value = JSON.stringify(value);
-		} else if(value === undefined) {
-			classes.push('unknown');
-			value = '-';
+		value = applyColumnFormatter(column, value, isList, classes);
+		if(!(column in columnFormatters)) {
+			if(typeof value === 'number') {
+				classes.push('number');
+				value = formatNumber(value, column);
+			} else if(typeof value === 'object' && value !== null) {
+				value = JSON.stringify(value);
+			} else if(value === undefined) {
+				classes.push('unknown');
+				value = '-';
+			}
 		}
 		return { value, link, classes, raw };
 	}

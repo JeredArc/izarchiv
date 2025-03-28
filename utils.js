@@ -1,4 +1,4 @@
-import { defaultLocale, multipliedColumns, columnFractionDigits, colPreDelta, colPreData, deltaColumns, columnFormatters, defaultUiDateFormat, defaultUiDateFormatList } from './settings.js';
+import { defaultLocale, multipliedColumns, columnFractionDigits, colPreDelta, colPreData, deltaColumns, columnFormatters, defaultUiDateFormat, defaultUiDateFormatList, slimColumns } from './settings.js';
 
 /**
  * Format a date according to the specified format
@@ -109,6 +109,7 @@ export function checkSettings() {
 }
 
 export function applyColumnFormatter(column, value, isList=false, classes=[]) {
+	if(slimColumns.includes(column)) classes.push('slim');
 	if(column in columnFormatters) {
 		let formatter = columnFormatters[column];
 		if(typeof formatter === 'function') value = formatter(value, this);

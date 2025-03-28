@@ -12,6 +12,7 @@ export class Device {
 	newestRecord = null;
 	recentRecord = null;
 	newestRecords = [];
+	favorite_at = null;
 
 	constructor(device) {
 		this.id = device.id;
@@ -26,6 +27,7 @@ export class Device {
 		this.newestRecord = device.newestRecord;
 		this.recentRecord = device.recentRecord;
 		this.newestRecords = device.newestRecords || [];
+		this.favorite_at = device.favorite_at;
 		if(!this.overview_columns || !Array.isArray(this.overview_columns)) this.overview_columns = [];
 	}
 
@@ -44,7 +46,7 @@ export class Device {
 		const fieldName = column.substring(1);
 		if (prefix === colPreDevice) { /* Direct device property */
 			if(fieldName === 'id') return `/device/${this.id}`;
-			if(fieldName === 'recordCount') return `/records?device=${this.id}`; // TODO: check with filters
+			if(fieldName === 'recordCount') return `/records?filter_column=${colPreRecord}device&filter_operator=eq&filter_value=${this.id}`;
 			if(fieldName === 'newestRecord') return `/record/${this.newestRecord.id}`;
 			if(fieldName === 'recentRecord') return `/record/${this.recentRecord.id}`;
 		}
@@ -55,9 +57,7 @@ export class Device {
 		let value = raw;
 		let classes = ['value'];
 		let link = this.columnLink(column);
-		if(column in columnFormatters) {
-			value = applyColumnFormatter(column, value, isList, classes);
-		}
+		value = applyColumnFormatter(column, value, isList, classes);
 		return { value, link, classes, raw };
 	}
 }

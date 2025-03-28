@@ -1,20 +1,19 @@
 <%
 const baseUrl = path;
 const getPageUrl = (newPage, newLimit) => {
-	const limitParam = newLimit ? `&limit=${newLimit}` : `&limit=${pagination.limit}`;
-	
 	if (newPage === null && newLimit) {
 		const currentOffset = (pagination.currentPage - 1) * pagination.limit;
 		newPage = Math.floor(currentOffset / newLimit) + 1;
 	}
-	const pageParam = newPage ? `page=${newPage}` : `page=${pagination.currentPage}`;
-	let url = `${baseUrl}?${pageParam}${limitParam}`;
+	const pageParam = newPage ? `?page=${newPage}` : `?page=${pagination.currentPage}`;
+
+	const limitParam = newLimit ? `&limit=${newLimit}` : `&limit=${pagination.limit}`;
+
+	let url = `${baseUrl}${pageParam}${limitParam}`;
 	
 	url += typeof columnQueryParam === 'string' ? columnQueryParam : '';
 	
-	if (typeof getFilterQueryParam === 'function') {
-		url += getFilterQueryParam();
-	}
+	url += typeof filterQueryParam === 'string' ? filterQueryParam : '';
 	
 	return url;
 };
@@ -25,7 +24,7 @@ const limitOptions = [10, 20, 50, 100, 200, 500];
 <div class="list-bottom-bar">
 	<div class="limit-selector">
 		<label for="limit-select">Zeige</label>
-		<select id="limit-select" onchange="window.location.href=this.value">
+		<select id="limit-select" data-initial-selected="<%= limitOptions.indexOf(pagination.limit) %>">
 			<% limitOptions.forEach(option => { %>
 				<option value="<%= getPageUrl(null, option) %>" <%= pagination.limit === option ? 'selected' : '' %>>
 					<%= option %>

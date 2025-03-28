@@ -32,4 +32,4 @@ Based on IZAR MBus Decoder (C) 2020-2022 Architekt Krizmanics ZT GmbH
 
 ## Usage
 Upload files via FTP. Files ending in .rdy will mark their corresponding data files as ready in the database.
-Access the web interface at `http://localhost:${webserver.port}` (as configured in settings.js).
+Access the web interface at `http://localhost:${webserver.webserverPort}` (as configured in settings.js).

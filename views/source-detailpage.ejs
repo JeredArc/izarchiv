@@ -10,6 +10,7 @@ let columns = [
 	colPreSource + 'filename',
 	colPreSource + 'rdysent',
 	colPreSource + 'recordCount',
+	colPreSource + 'deviceIds',
 ];
 %>
 <div class="detail-section">
@@ -37,9 +38,9 @@ let columns = [
 	<% if (source.newestRecords && source.newestRecords.length > 0) { %>
 		<h3>
 			<% if (source.newestRecords.length === source.recordCount) { %>
-				Alle Messwerte   <a href="/records?source=<%= source.id %>" class="link-small">Alle anzeigen</a>
+				Alle Messwerte   <a href="/records?filter_column=<%= colPreRecord + 'source' %>&filter_operator=eq&filter_value=<%= source.id %>" class="link-small">Alle anzeigen</a>
 			<% } else { %>
-				Aktuellste Messwerte  (<%= source.newestRecords.length %> von <%= source.recordCount %>)   <a href="/records?source=<%= source.id %>" class="link-small">Alle anzeigen</a>
+				Aktuelle Messwerte  (<%= source.newestRecords.length %> von <%= source.recordCount %>)   <a href="/records?filter_column=<%= colPreRecord + 'source' %>&filter_operator=eq&filter_value=<%= source.id %>" class="link-small">Alle anzeigen</a>
 			<% } %>
 		</h3>
 		<div class="collapsible-content">

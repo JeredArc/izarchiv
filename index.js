@@ -3,7 +3,7 @@
 import { initDatabase } from './db.js';
 import createFtpServer from './ftpserver.js';
 import { startWebServer } from './webserver.js';
-import { dbfile, ftpconfig } from './settings.js';
+import { dbfile, ftpconfig, webserver } from './settings.js';
 import { checkSettings } from './utils.js';
 
 /* Start the application */
@@ -22,7 +22,7 @@ async function startApp() {
 	});
 	
 	/* Create and start the web server if enabled */
-	await startWebServer(db);
+	if(webserver.enabled) await startWebServer(db);
 }
 
 startApp().catch(err => {
