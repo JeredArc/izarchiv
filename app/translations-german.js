@@ -54,3 +54,5 @@ const operatorTranslations = {
 export const operatorCaption = (operator) => {
 	return operatorTranslations[operator] || operator;
 }
+
+export const ftpAboutText = `IZARchiv ${process.env.npm_package_version}\n\nDies ist der IZARchiv FTP Server. Dateien hier hochladen, um sie als Quellen in die IZARchiv Datenbank zu speichern.`;
