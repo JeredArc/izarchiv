@@ -15,7 +15,7 @@ Set WshShell = CreateObject("WScript.Shell")
 ' Set port from settings (should match webserver.port in settings.js)
 ' Read port from settings.js
 Dim settingsFile, settingsContent, portMatch
-Set settingsFile = fso.OpenTextFile(scriptDir & "\settings.js", 1)
+Set settingsFile = fso.OpenTextFile(scriptDir & "\app\settings.js", 1)
 settingsContent = settingsFile.ReadAll
 settingsFile.Close
 
@@ -80,7 +80,7 @@ On Error Goto 0
 
 ' Start the Node.js server
 Dim indexPath
-indexPath = fso.BuildPath(scriptDir, "index.js")
+indexPath = fso.BuildPath(scriptDir, "app\index.js")
 
 ' Run node with index.js as a sibling process
 shell.Run """" & nodePath & """ """ & indexPath & """", 0, False

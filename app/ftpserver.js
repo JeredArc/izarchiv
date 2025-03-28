@@ -24,12 +24,20 @@ export default function createFtpServer(db) {
 
 	ftpServer.on("login", ({ username, password, connection }, resolve, reject) => {
 		if (username === ftpconfig.user && password === ftpconfig.pass) {
+			console.log(`FTP login successful to ${connection.ip}`);
 			let connectionIP = connection.ip.replace("::ffff:", "");
 			connection.server.options.pasv_url = connectionIP;
 
 			resolve({
 				fs: {
-					list: async () => [],
+					list: async () => {
+						return [{
+							name: '/',
+							type: 'd',
+							size: 0,
+							mtime: new Date()
+						}];
+					},
 					chdir: async () => '/',
 					cwd: async () => '/',
 					currentDirectory: () => '/',
