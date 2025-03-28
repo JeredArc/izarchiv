@@ -30,9 +30,14 @@ export default function createFtpServer(db) {
 			connection.server.options.pasv_url = connectionIP;
 
 			let files = new Map([
+				['/', {
+					directory: true,
+					mode: 0o755,
+					mtime: new Date(),
+				}],
 				['/_about.txt', {
 					content: ftpAboutText,
-					lastModified: new Date(),
+					mtime: new Date(),
 					contentType: 'text/plain',
 					directory: false,
 					mode: 0o644,
@@ -43,29 +48,45 @@ export default function createFtpServer(db) {
 			resolve({
 				fs: {
 					cwd: '/',
-					currentDirectory: () => '/',
-					get: async (fileName) => ({
-						isDirectory: () => true,
-						mode: 0o755,
-						size: 0,
-						mtime: new Date(),
-					}),
+					currentDirectory: () => this.cwd,
+					get: async (fileName) => {
+						if (files.has(this.cwd + fileName)) {
+							return files.get(this.cwd + fileName);
+						}
+						throw new Error(`File "${this.cwd + fileName}" not found`);
+					},
 					list: async (path) => {
-						return Array.from(files.entries()).map(([fileName, file]) => ({
+						path ||= this.cwd;
+						return Array.from(files.entries())
+						.filter(([fileName, file]) => fileName.length > path.length && fileName.startsWith(path) && !fileName.slice(path.length).includes('/'))
+						.map(([fileName, file]) => ({
 							isDirectory: () => file.directory,
-							name: fileName,
+							name: fileName.slice(path.length),
 							type: file.directory ? 'd' : 'f',
 							size: file.directory ? 0 : file.size,
-							mtime: file.lastModified,
+							mtime: file.mtime,
 							mode: file.mode,
 						}));
 					},
-					chdir: async (path) => '/',
-					write: async (filePath) => {
-						if (files.has(filePath)) {
-							const file = files.get(filePath);
+					chdir: async (path) => {
+						path ||= '/';
+						if (files.has(path)) {
+							this.cwd = path;
+							return this.cwd;
+						}
+						else if (files.has(path + '/')) {
+							this.cwd = path + '/';
+							return this.cwd;
+						}
+						else {
+							throw new Error(`Directory "${path}" not found`);
+						}
+					},
+					write: async (fileName) => {
+						if (files.has(this.cwd + fileName)) {
+							const file = files.get(this.cwd + fileName);
 							file.content = '';
-							file.lastModified = new Date();
+							file.mtime = new Date();
 							return { stream: new Writable({ write(chunk, encoding, callback) {
 								file.content += chunk;
 								file.size += file.content.length;
@@ -89,7 +110,7 @@ export default function createFtpServer(db) {
 							});
 
 							writeStream.on("finish", async () => {
-								const cleanPath = filePath.replace(/^\//, "");
+								const cleanPath = fileName.replace(/^\//, "");
 								const buffer = Buffer.concat(chunks);
 								
 								try {
@@ -108,15 +129,15 @@ export default function createFtpServer(db) {
 						}
 					},
 					read: async (fileName, { start, end }) => {
-						if (files.has(fileName)) {
-							const file = files.get(fileName);
+						if (files.has(this.cwd + fileName)) {
+							const file = files.get(this.cwd + fileName);
 							const content = file.content;
 							const startIndex = start || 0;
 							const endIndex = end || content.length;
 							const chunk = content.slice(startIndex, endIndex);
 							return { stream: new Readable({ read(size) { this.push(chunk); this.push(null); } }) };
 						}
-						throw new Error(`File "${fileName}" not found`);
+						throw new Error(`File "${this.cwd + fileName}" not found`);
 					},
 					delete: async (path) => { throw new Error("Not implemented (delete)"); },
 					mkdir:  async (path) => { throw new Error("Not implemented (mkdir)"); },
