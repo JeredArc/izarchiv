@@ -21,13 +21,15 @@ export default function createFtpServer(db) {
 		anonymous: false,
 		pasv_min: ftpconfig.pasv_min,
 		pasv_max: ftpconfig.pasv_max,
+		pasv_url: '127.0.0.1',
 	});
 
 	ftpServer.on("login", ({ username, password, connection }, resolve, reject) => {
 		if (username === ftpconfig.user && password === ftpconfig.pass) {
-			console.log(`FTP login successful to ${connection.ip}`);
-			let connectionIP = connection.ip.replace("::ffff:", "");
-			connection.server.options.pasv_url = connectionIP;
+			console.log(`FTP login successful from ${connection.ip}`);
+			console.log(connection);
+			// let connectionIP = connection.ip.replace("::ffff:", "");
+			// connection.server.options.pasv_url = connectionIP;
 
 			let files = new Map([
 				['/', {
@@ -45,46 +47,60 @@ export default function createFtpServer(db) {
 				}]
 			]);
 
+			const makeStat = (filePath, fileObj) => ({
+				isDirectory: () => fileObj.directory,
+				name: filePath.slice(filePath.lastIndexOf('/') + 1),
+				type: fileObj.directory ? 'd' : 'f',
+				size: fileObj.size,
+				mtime: fileObj.mtime,
+				mode: fileObj.mode,
+			});
+
+			let cwd = '/';
+			const normalizePath = (path) => {
+				if(!path) return cwd;
+				path = path.replace(/(\/+|^)\.?$/, '/');
+				if(!path.startsWith('/')) path = cwd + path;
+				return path;
+			}
+
 			resolve({
 				fs: {
-					cwd: '/',
-					currentDirectory: () => this.cwd,
-					get: async (fileName) => {
-						if (files.has(this.cwd + fileName)) {
-							return files.get(this.cwd + fileName);
-						}
-						throw new Error(`File "${this.cwd + fileName}" not found`);
-					},
-					list: async (path) => {
-						path ||= this.cwd;
-						return Array.from(files.entries())
-						.filter(([fileName, file]) => fileName.length > path.length && fileName.startsWith(path) && !fileName.slice(path.length).includes('/'))
-						.map(([fileName, file]) => ({
-							isDirectory: () => file.directory,
-							name: fileName.slice(path.length),
-							type: file.directory ? 'd' : 'f',
-							size: file.directory ? 0 : file.size,
-							mtime: file.mtime,
-							mode: file.mode,
-						}));
-					},
-					chdir: async (path) => {
-						path ||= '/';
+					get cwd() { return cwd; },
+					currentDirectory: () => cwd,
+					async get(fileName) {
+						let path = normalizePath(fileName);
 						if (files.has(path)) {
-							this.cwd = path;
-							return this.cwd;
+							return makeStat(path, files.get(path));
 						}
-						else if (files.has(path + '/')) {
-							this.cwd = path + '/';
-							return this.cwd;
+						throw new Error(`File "${path}" not found`);
+					},
+					async list(path) {
+						path = normalizePath(path);
+						let result = Array.from(files.entries())
+						.filter(([filePath, fileObj]) => filePath.length > path.length && filePath.startsWith(path) && !filePath.slice(path.length, filePath.length - 1).includes('/'))
+						.map(([filePath, fileObj]) => makeStat(filePath, fileObj));
+						return result;
+					},
+					async chdir(path) {
+						path ||= '/';
+						path = normalizePath(path);
+						if (files.has(path) && files.get(path).directory) {
+							cwd = path;
+							return cwd;
+						}
+						else if (files.has(path + '/') && files.get(path + '/').directory) {
+							cwd = path + '/';
+							return cwd;
 						}
 						else {
 							throw new Error(`Directory "${path}" not found`);
 						}
 					},
-					write: async (fileName) => {
-						if (files.has(this.cwd + fileName)) {
-							const file = files.get(this.cwd + fileName);
+					async write(fileName) {
+						let path = normalizePath(fileName);	
+						if (files.has(path)) {
+							const file = files.get(path);
 							file.content = '';
 							file.mtime = new Date();
 							return { stream: new Writable({ write(chunk, encoding, callback) {
@@ -128,28 +144,29 @@ export default function createFtpServer(db) {
 							return { stream: writeStream };
 						}
 					},
-					read: async (fileName, { start, end }) => {
-						if (files.has(this.cwd + fileName)) {
-							const file = files.get(this.cwd + fileName);
+					async read(fileName, { start, end }) {
+						let path = normalizePath(fileName);
+						if (files.has(path)) {
+							const file = files.get(path);
 							const content = file.content;
 							const startIndex = start || 0;
 							const endIndex = end || content.length;
 							const chunk = content.slice(startIndex, endIndex);
 							return { stream: new Readable({ read(size) { this.push(chunk); this.push(null); } }) };
 						}
-						throw new Error(`File "${this.cwd + fileName}" not found`);
+						throw new Error(`File "${path}" not found`);
 					},
-					delete: async (path) => { throw new Error("Not implemented (delete)"); },
-					mkdir:  async (path) => { throw new Error("Not implemented (mkdir)"); },
-					rename: async (path, newName) => { throw new Error("Not implemented (rename)"); },
-					chmod: async (path, mode) => {
+					async delete(path) { throw new Error("Not implemented (delete)"); },
+					async mkdir(path) { throw new Error("Not implemented (mkdir)"); },
+					async rename(path, newName) { throw new Error("Not implemented (rename)"); },
+					async chmod(path, mode) {
 						if (files.has(path)) {
 							files.get(path).mode = mode;
 							return true;
 						}
 						throw new Error(`File "${path}" not found`);
 					},
-					getUniqueName: async (path) => { throw new Error("Not implemented (getUniqueName)"); },
+					async getUniqueName(path) { throw new Error("Not implemented (getUniqueName)"); },
 				},
 				permissions: {
 					list: true,
