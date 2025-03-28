@@ -10,12 +10,12 @@ jobs:
     runs-on: windows-latest
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           
       - name: Create package structure
         run: |
@@ -34,7 +34,7 @@ jobs:
           
       - name: Download Node.js binary
         run: |
-          $nodeVersion = "18.18.2"  # Update with your desired version
+          $nodeVersion = "20.12.1"
           Invoke-WebRequest -Uri "https://nodejs.org/dist/v$nodeVersion/win-x64/node.exe" -OutFile "izarchiv-win-x64\nodejs\node.exe"
           
       - name: Create ZIP archive
@@ -42,18 +42,13 @@ jobs:
           Compress-Archive -Path izarchiv-win-x64 -DestinationPath izarchiv-win-x64.zip
           
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: izarchiv-win-x64
           path: izarchiv-win-x64.zip
           
       - name: Attach to release
         if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./izarchiv-win-x64.zip
-          asset_name: izarchiv-win-x64.zip
-          asset_content_type: application/zip
+          files: izarchiv-win-x64.zip
