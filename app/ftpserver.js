@@ -76,12 +76,12 @@ export default function startFtpServer(db) {
 		console.log(`[${connection.ip}] FTP client disconnected`);
 	});
 
-	ftpServer.on('server-error', (err) => {
-		logFtp(`FTP server error: ${JSON.stringify(err)}`);
+	ftpServer.on('server-error', ({error}) => {
+		logFtp(`FTP server error: ${error}`);
 	});
 
-	ftpServer.on('client-error', (err) => {
-		logFtp(`FTP client error: ${JSON.stringify(err)}`);
+	ftpServer.on('client-error', ({context, error}) => {
+		logFtp(`[${context.connection.ip}] FTP client error: ${error} (Context: ${context})`);
 	});
 
 
