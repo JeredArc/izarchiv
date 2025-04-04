@@ -33,7 +33,7 @@ export default function startFtpServer(db) {
 		pasv_min: ftpconfig.pasv_min,
 		pasv_max: ftpconfig.pasv_max,
 		pasv_url: serverIP,
-		timeout: 120000,  // 2 minutes timeout
+		timeout: 600000,  // 10 minutes timeout
 	});
 	logFtp(`FTP server started at ${ftpconfig.host}:${ftpconfig.port}`);
 
