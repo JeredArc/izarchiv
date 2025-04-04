@@ -9,6 +9,9 @@ import { ftpAboutText } from './translations-german.js';
 import os from 'os';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; /* 50MB limit */
+// const IDLE_TIMEOUT = 600000; // 10 minutes
+const IDLE_TIMEOUT = 30000; // 30 seconds
+const NOOP_INTERVAL = 60000; // 60 seconds
 
 export default function startFtpServer(db) {
 	// Create a write stream for FTP logging
@@ -33,31 +36,28 @@ export default function startFtpServer(db) {
 		pasv_min: ftpconfig.pasv_min,
 		pasv_max: ftpconfig.pasv_max,
 		pasv_url: serverIP,
-		timeout: 600000,  // 10 minutes timeout
+		timeout: IDLE_TIMEOUT,
 	});
-	logFtp(`FTP server started at ${ftpconfig.host}:${ftpconfig.port}`);
 
 	// Log all FTP commands
 	ftpServer.on('connect', ({connection, id}) => {
 		const ip = connection.ip;
 		logFtp(`New connection from ${ip} (ID: ${id})`);
 
-		// Log all raw commands
+		// Log all raw commands and responses
 		connection.commandSocket.on('data', (data) => {
-			logFtp(`[${ip}] Command: ${data.toString().trim()}`);
+			logFtp(`[${ip}] Client: ${data.toString().trim()}`);
 		});
-
-		// Log all responses
 		const originalWrite = connection.commandSocket.write;
-		connection.commandSocket.write = function(data, ...args) {
-			logFtp(`[${ip}] Response: ${data.toString().trim()}`);
-			return originalWrite.call(this, data, ...args);
+		connection.commandSocket.write = function(...args) {
+			logFtp(`[${ip}] Server: ${args[0].toString().trim()}`);
+			return originalWrite.call(this, ...args);
 		};
 	});
 
 	// Log disconnections
 	ftpServer.on('disconnect', ({connection, id}) => {
-		logFtp(`Client disconnected ${connection.ip} (ID: ${id})`);
+		logFtp(`[${connection.ip}] Client disconnected (ID: ${id})`);
 	});
 
 	ftpServer.on('server-error', (err) => {
@@ -80,12 +80,11 @@ export default function startFtpServer(db) {
 		logFtp(`RETR: ${err} ${filePath}`);
 	});
 
+
+
 	ftpServer.on("login", ({ username, password, connection }, resolve, reject) => {
 		if (username === ftpconfig.user && password === ftpconfig.pass) {
 			console.log(`FTP login successful from ${connection.ip}`);
-			// console.log(connection);
-			// let connectionIP = connection.ip.replace("::ffff:", "");
-			// connection.server.options.pasv_url = connectionIP;
 
 			let files = new Map([
 				['/', {
@@ -169,20 +168,31 @@ export default function startFtpServer(db) {
 							let chunks = [];
 							let totalSize = 0;
 							let dataReceived = false;
-
-							logFtp(`Starting upload for file: ${fileName}`);
+							
+							logFtp(`[${connection.ip}] Starting upload for file: ${fileName}`);
+							
+							let lastNoopTime = Date.now();
+							const keepAlive = () => { /* ftp-srv would close connection after IDLE_TIMEOUT, even while data is sent over the data connection */
+								const now = Date.now();
+								if (now - lastNoopTime > NOOP_INTERVAL) {
+									connection.commandSocket.write('200 NOOP ok\r\n');
+									lastNoopTime = now;
+								}
+							};
 
 							let writeStream = new Writable({
 								write(chunk, encoding, callback) {
 									if (!dataReceived) {
 										dataReceived = true;
-										logFtp(`First data chunk received for ${fileName} (${chunk.length} bytes)`);
+										logFtp(`[${connection.ip}] First data chunk received for ${fileName} (${chunk.length} bytes)`);
 									}
 									totalSize += chunk.length;
-									logFtp(`Data chunk received for ${fileName}: ${chunk.length} bytes (total: ${totalSize} bytes)`);
+									logFtp(`[${connection.ip}] Data chunk received for ${fileName}: ${chunk.length} bytes (total: ${totalSize} bytes)`);
 									
+									keepAlive();
+
 									if (totalSize > MAX_FILE_SIZE) {
-										logFtp(`File size limit exceeded for ${fileName}`);
+										logFtp(`[${connection.ip}] File size limit exceeded for ${fileName}`);
 										callback(new Error("File too large"));
 										return;
 									}
@@ -192,35 +202,35 @@ export default function startFtpServer(db) {
 							});
 
 							writeStream.on("finish", async () => {
-								logFtp(`Upload finished for ${fileName}, total size: ${totalSize} bytes`);
+								logFtp(`[${connection.ip}] Upload finished for ${fileName}, total size: ${totalSize} bytes`);
 								const cleanPath = fileName.replace(/^\//, "");
 								const buffer = Buffer.concat(chunks);
 								
 								try {
 									await storeFile(db, cleanPath, buffer);
-									logFtp(`File ${fileName} successfully stored in database`);
+									logFtp(`[${connection.ip}] File ${fileName} successfully stored in database`);
 									
 									if (saveUploadsInFilesystem) {
 										const filename = formatDate(new Date(), 'yyyymmdd-hhii') + '_' + cleanPath.replace(/[\/\\]/g, '');
 										fs.writeFileSync(path.join(uploadDirPath, filename), buffer);
-										logFtp(`File ${fileName} saved to filesystem as ${filename}`);
+										logFtp(`[${connection.ip}] File ${fileName} saved to filesystem as ${filename}`);
 									}
 								} catch (err) {
-									logFtp(`Error processing file ${fileName}: ${err.message}`);
+									logFtp(`[${connection.ip}] Error processing file ${fileName}: ${err.message}`);
 									console.error(`Error processing file: ${err.message}`);
 								}
 							});
 
 							writeStream.on("error", (err) => {
-								logFtp(`Write stream error for ${fileName}: ${err.message}`);
+								logFtp(`[${connection.ip}] Write stream error for ${fileName}: ${err.message}`);
 								console.error("Write stream error during ftp upload:", err);
 							});
 
 							// Add pipe error handling
 							writeStream.on("pipe", (src) => {
-								logFtp(`Data connection established for ${fileName}`);
+								logFtp(`[${connection.ip}] Data connection established for ${fileName}`);
 								src.on("error", (err) => {
-									logFtp(`Data connection error for ${fileName}: ${err.message}`);
+									logFtp(`[${connection.ip}] Data connection error for ${fileName}: ${err.message}`);
 								});
 							});
 
@@ -265,14 +275,10 @@ export default function startFtpServer(db) {
 		}
 	});
 
-	ftpServer.on('error', (error) => {
-		logFtp(`FTP general error: ${JSON.stringify(error)}`);
-		console.error('FTP general error:', error);
-	});
-
 	ftpServer.listen()
 	.then(() => {
 		console.log(`FTP server running at ftp://${ftpconfig.host}:${ftpconfig.port}`);
+		logFtp(`FTP server listening on ${ftpconfig.host}:${ftpconfig.port}`);
 	})
 	.catch(err => {
 		console.error("Failed to start FTP server at ftp://${ftpconfig.host}:${ftpconfig.port}:", err);

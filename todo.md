@@ -26,6 +26,8 @@
 
 - [ ] check warning and error handling
 
+# backup:
+- [ ] possibility to create regular copy of database file to a specified location (eg. onedrive folder)
 
 # done:
 - [x] delta calculation (not working)
