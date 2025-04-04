@@ -43,6 +43,7 @@ export default function startFtpServer(db) {
 	ftpServer.on('connect', ({connection, id}) => {
 		const ip = connection.ip;
 		logFtp(`New connection from ${ip} (ID: ${id})`);
+		console.log(`FTP connection established from ${ip}`);
 
 		// Log all raw commands and responses
 		connection.commandSocket.on('data', (data) => {
@@ -53,6 +54,18 @@ export default function startFtpServer(db) {
 			logFtp(`[${ip}] Server: ${args[0].toString().trim()}`);
 			return originalWrite.call(this, ...args);
 		};
+
+		connection.on('RNTO', (err, fileName) => {
+			logFtp(`[${ip}] RNTO "${fileName}": ${err ? `Error: ${err}` : `OK`}`);
+		});
+	
+		connection.on('STOR', (err, fileName) => {
+			logFtp(`[${ip}] STOR "${fileName}": ${err ? `Error: ${err}` : `OK`}`);
+		});
+	
+		connection.on('RETR', (err, filePath) => {
+			logFtp(`[${ip}] RETR "${filePath}": ${err ? `Error: ${err}` : `OK`}`);
+		});	
 	});
 
 	// Log disconnections
@@ -68,23 +81,11 @@ export default function startFtpServer(db) {
 		logFtp(`FTP client error: ${JSON.stringify(err)}`);
 	});
 
-	ftpServer.on('RNTO', (err, fileName) => {
-		logFtp(`RNTO: ${err} ${fileName}`);
-	});
-
-	ftpServer.on('STOR', (err, fileName) => {
-		logFtp(`STOR: ${err} ${fileName}`);
-	});
-
-	ftpServer.on('RETR', (err, filePath) => {
-		logFtp(`RETR: ${err} ${filePath}`);
-	});
-
 
 
 	ftpServer.on("login", ({ username, password, connection }, resolve, reject) => {
 		if (username === ftpconfig.user && password === ftpconfig.pass) {
-			console.log(`FTP login successful from ${connection.ip}`);
+			console.log(`FTP login successful from ${username}@${connection.ip}`);
 
 			let files = new Map([
 				['/', {
