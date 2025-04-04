@@ -6,28 +6,64 @@ import { Writable, Readable } from 'stream';
 import fs from 'fs';
 import path from 'path';
 import { ftpAboutText } from './translations-german.js';
-
+import os from 'os';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; /* 50MB limit */
 
-export default function createFtpServer(db) {
+export default function startFtpServer(db) {
+	// Create a write stream for FTP logging
+	const ftpLogStream = fs.createWriteStream('ftp.log', { flags: 'a' }); // 'a' for append mode
+	
+	function logFtp(message) {
+		const timestamp = new Date().toISOString();
+		ftpLogStream.write(`${timestamp} ${message}\n`);
+	}
+	logFtp('FTP server started');
+
 	// Create uploads directory if it doesn't exist and if filesystem saving is enabled
 	if (saveUploadsInFilesystem && !fs.existsSync(uploadDirPath)) {
 		fs.mkdirSync(uploadDirPath, { recursive: true });
 	}
 
+	const serverIP = Object.values(os.networkInterfaces()).flat().find(iface => iface.family === 'IPv4' && !iface.internal)?.address || '';
+	if(!serverIP) console.warn('Server has no external IPv4 address, PASV will not work!');
+
 	const ftpServer = new FtpSrv({
-		url: `ftp://0.0.0.0:${ftpconfig.port}`,
+		url: `ftp://${ftpconfig.host}:${ftpconfig.port}`,
 		anonymous: false,
 		pasv_min: ftpconfig.pasv_min,
 		pasv_max: ftpconfig.pasv_max,
-		pasv_url: '127.0.0.1',
+		pasv_url: serverIP,
+		timeout: 120000,  // 2 minutes timeout
+	});
+
+	// Log all FTP commands
+	ftpServer.on('connect', ({connection, id}) => {
+		const ip = connection.ip;
+		logFtp(`New connection from ${ip} (ID: ${id})`);
+
+		// Log all raw commands
+		connection.commandSocket.on('data', (data) => {
+			logFtp(`[${ip}] Command: ${data.toString().trim()}`);
+		});
+
+		// Log all responses
+		const originalWrite = connection.commandSocket.write;
+		connection.commandSocket.write = function(data, ...args) {
+			logFtp(`[${ip}] Response: ${data.toString().trim()}`);
+			return originalWrite.call(this, data, ...args);
+		};
+	});
+
+	// Log disconnections
+	ftpServer.on('disconnect', ({connection, id}) => {
+		logFtp(`Client disconnected ${connection.ip} (ID: ${id})`);
 	});
 
 	ftpServer.on("login", ({ username, password, connection }, resolve, reject) => {
 		if (username === ftpconfig.user && password === ftpconfig.pass) {
 			console.log(`FTP login successful from ${connection.ip}`);
-			console.log(connection);
+			// console.log(connection);
 			// let connectionIP = connection.ip.replace("::ffff:", "");
 			// connection.server.options.pasv_url = connectionIP;
 
@@ -141,6 +177,10 @@ export default function createFtpServer(db) {
 								}
 							});
 
+							writeStream.on("error", (err) => {
+								console.error("Write stream error during ftp upload:", err);
+							});
+
 							return { stream: writeStream };
 						}
 					},
@@ -181,6 +221,16 @@ export default function createFtpServer(db) {
 			reject(new Error("Invalid username or password"));
 		}
 	});
+
+	ftpServer.listen()
+	.then(() => {
+		console.log(`FTP server running at ftp://${ftpconfig.host}:${ftpconfig.port}`);
+	})
+	.catch(err => {
+		console.error("Failed to start FTP server at ftp://${ftpconfig.host}:${ftpconfig.port}:", err);
+		// process.exit(1);
+	});
+
 
 	return ftpServer;
 } 

@@ -6,6 +6,8 @@ export const dbfile = "./database.db3";
 
 /* Security isn't a concern here, as files/data can only be added via FTP, not modified or deleted. */
 export const ftpconfig = {
+	enabled: true,
+	host: "0.0.0.0",
 	port: 21,
 	user: "izar",
 	pass: "IZAR.Center",
@@ -17,8 +19,8 @@ export const ftpconfig = {
 export const webserver = {
 	enabled: true,
 	webserverPort: 3000, /* queried by "IZARchiv starten.vbs" */
-	// host: '127.0.0.1',
-	host: '0.0.0.0'
+	host: "127.0.0.1",
+	// host: "0.0.0.0"
 };
 
 export const defaultLocale = "de-AT";

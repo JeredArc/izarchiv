@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { initDatabase } from './db.js';
-import createFtpServer from './ftpserver.js';
+import startFtpServer from './ftpserver.js';
 import { startWebServer } from './webserver.js';
 import { dbfile, ftpconfig, webserver } from './settings.js';
 import { checkSettings } from './utils.js';
@@ -14,15 +14,11 @@ async function startApp() {
 	/* create database and table */
 	const db = await initDatabase(dbfile);
 
-	/* Create and start the FTP server */
-	const ftpServer = createFtpServer(db);
-
-	ftpServer.listen().then(() => {
-		console.log(`FTP server running on port ${ftpconfig.port}`);
-	});
-	
 	/* Create and start the web server if enabled */
 	if(webserver.enabled) await startWebServer(db);
+
+	/* Create and start the FTP server if enabled */
+	if(ftpconfig.enabled) startFtpServer(db);
 }
 
 startApp().catch(err => {

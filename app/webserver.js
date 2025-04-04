@@ -315,6 +315,6 @@ export async function startWebServer(database) {
 		host: webserver.host 
 	});
 	
-	console.log(`Web server running at ${fastify.server.address().address}:${fastify.server.address().port}`);
+	console.log(`Web server running at http://${fastify.server.address().address}:${fastify.server.address().port}`);
 	return fastify;
 } 
