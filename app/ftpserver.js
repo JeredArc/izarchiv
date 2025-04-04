@@ -9,9 +9,10 @@ import { ftpAboutText } from './translations-german.js';
 import os from 'os';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; /* 50MB limit */
-// const IDLE_TIMEOUT = 600000; // 10 minutes
-const IDLE_TIMEOUT = 30000; // 30 seconds
-const NOOP_INTERVAL = 10000; // 60 seconds
+const IDLE_TIMEOUT = 600000; // 10 minutes
+// const IDLE_TIMEOUT = 30000; // 30 seconds
+// const IDLE_TIMEOUT = 2000; // 2 seconds
+// const NOOP_INTERVAL = 10000; // 60 seconds
 const FTP_LOG_FILE = 'ftp.log';
 const FTP_LOG_TO_CONSOLE = true;
 
@@ -178,13 +179,16 @@ export default function startFtpServer(db) {
 							logFtp(`[${connection.ip}] Starting upload for file: ${fileName}`);
 							console.log(`[${connection.ip}] FTP client initiated upload for file: ${fileName}`);
 							
-							let lastNoopTime = Date.now();
+							// let lastNoopTime = Date.now();
+							// const keepAlive = () => { /* ftp-srv would close connection after IDLE_TIMEOUT, even while data is sent over the data connection */
+							// 	const now = Date.now();
+							// 	if (now - lastNoopTime > NOOP_INTERVAL) {
+							// 		connection.commandSocket.write('200 NOOP ok\r\n');
+							// 		lastNoopTime = now;
+							// 	}
+							// };
 							const keepAlive = () => { /* ftp-srv would close connection after IDLE_TIMEOUT, even while data is sent over the data connection */
-								const now = Date.now();
-								if (now - lastNoopTime > NOOP_INTERVAL) {
-									connection.commandSocket.write('200 NOOP ok\r\n');
-									lastNoopTime = now;
-								}
+								if(IDLE_TIMEOUT) connection.commandSocket.setTimeout(IDLE_TIMEOUT); /* setting timeout to the same value resets its timer */
 							};
 
 							let writeStream = new Writable({
