@@ -82,8 +82,8 @@ export default function startFtpServer(db) {
 		logFtp(`FTP server error: ${error}`);
 	});
 
-	ftpServer.on('client-error', ({context, error}) => {
-		logFtp(`[${context.connection.ip}] FTP client error: ${error} (Context: ${context})`);
+	ftpServer.on('client-error', ({connection, context, error}) => {
+		logFtp(`[${connection.ip}] FTP client error: ${error} (Context: ${context})`);
 	});
 
 
