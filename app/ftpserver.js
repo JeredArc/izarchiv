@@ -18,7 +18,6 @@ export default function startFtpServer(db) {
 		const timestamp = new Date().toISOString();
 		ftpLogStream.write(`${timestamp} ${message}\n`);
 	}
-	logFtp('FTP server started');
 
 	// Create uploads directory if it doesn't exist and if filesystem saving is enabled
 	if (saveUploadsInFilesystem && !fs.existsSync(uploadDirPath)) {
@@ -36,6 +35,7 @@ export default function startFtpServer(db) {
 		pasv_url: serverIP,
 		timeout: 120000,  // 2 minutes timeout
 	});
+	logFtp(`FTP server started at ${ftpconfig.host}:${ftpconfig.port}`);
 
 	// Log all FTP commands
 	ftpServer.on('connect', ({connection, id}) => {
@@ -79,8 +79,6 @@ export default function startFtpServer(db) {
 	ftpServer.on('RETR', (err, filePath) => {
 		logFtp(`RETR: ${err} ${filePath}`);
 	});
-
-
 
 	ftpServer.on("login", ({ username, password, connection }, resolve, reject) => {
 		if (username === ftpconfig.user && password === ftpconfig.pass) {
@@ -170,11 +168,21 @@ export default function startFtpServer(db) {
 						else {
 							let chunks = [];
 							let totalSize = 0;
+							let dataReceived = false;
+
+							logFtp(`Starting upload for file: ${fileName}`);
 
 							let writeStream = new Writable({
 								write(chunk, encoding, callback) {
+									if (!dataReceived) {
+										dataReceived = true;
+										logFtp(`First data chunk received for ${fileName} (${chunk.length} bytes)`);
+									}
 									totalSize += chunk.length;
+									logFtp(`Data chunk received for ${fileName}: ${chunk.length} bytes (total: ${totalSize} bytes)`);
+									
 									if (totalSize > MAX_FILE_SIZE) {
+										logFtp(`File size limit exceeded for ${fileName}`);
 										callback(new Error("File too large"));
 										return;
 									}
@@ -184,23 +192,36 @@ export default function startFtpServer(db) {
 							});
 
 							writeStream.on("finish", async () => {
+								logFtp(`Upload finished for ${fileName}, total size: ${totalSize} bytes`);
 								const cleanPath = fileName.replace(/^\//, "");
 								const buffer = Buffer.concat(chunks);
 								
 								try {
 									await storeFile(db, cleanPath, buffer);
+									logFtp(`File ${fileName} successfully stored in database`);
 									
 									if (saveUploadsInFilesystem) {
 										const filename = formatDate(new Date(), 'yyyymmdd-hhii') + '_' + cleanPath.replace(/[\/\\]/g, '');
 										fs.writeFileSync(path.join(uploadDirPath, filename), buffer);
+										logFtp(`File ${fileName} saved to filesystem as ${filename}`);
 									}
 								} catch (err) {
+									logFtp(`Error processing file ${fileName}: ${err.message}`);
 									console.error(`Error processing file: ${err.message}`);
 								}
 							});
 
 							writeStream.on("error", (err) => {
+								logFtp(`Write stream error for ${fileName}: ${err.message}`);
 								console.error("Write stream error during ftp upload:", err);
+							});
+
+							// Add pipe error handling
+							writeStream.on("pipe", (src) => {
+								logFtp(`Data connection established for ${fileName}`);
+								src.on("error", (err) => {
+									logFtp(`Data connection error for ${fileName}: ${err.message}`);
+								});
 							});
 
 							return { stream: writeStream };
@@ -242,6 +263,11 @@ export default function startFtpServer(db) {
 		} else {
 			reject(new Error("Invalid username or password"));
 		}
+	});
+
+	ftpServer.on('error', (error) => {
+		logFtp(`FTP general error: ${JSON.stringify(error)}`);
+		console.error('FTP general error:', error);
 	});
 
 	ftpServer.listen()
