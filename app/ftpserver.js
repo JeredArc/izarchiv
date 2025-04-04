@@ -11,13 +11,15 @@ import os from 'os';
 const MAX_FILE_SIZE = 50 * 1024 * 1024; /* 50MB limit */
 // const IDLE_TIMEOUT = 600000; // 10 minutes
 const IDLE_TIMEOUT = 30000; // 30 seconds
-const NOOP_INTERVAL = 60000; // 60 seconds
+const NOOP_INTERVAL = 10000; // 60 seconds
+const FTP_LOG_FILE = 'ftp.log';
 
 export default function startFtpServer(db) {
 	// Create a write stream for FTP logging
-	const ftpLogStream = fs.createWriteStream('ftp.log', { flags: 'a' }); // 'a' for append mode
+	const ftpLogStream = FTP_LOG_FILE && fs.createWriteStream(FTP_LOG_FILE, { flags: 'a' }); // 'a' for append mode
 	
 	function logFtp(message) {
+		if(!ftpLogStream) return;
 		const timestamp = new Date().toISOString();
 		ftpLogStream.write(`${timestamp} ${message}\n`);
 	}
@@ -71,6 +73,7 @@ export default function startFtpServer(db) {
 	// Log disconnections
 	ftpServer.on('disconnect', ({connection, id}) => {
 		logFtp(`[${connection.ip}] Client disconnected (ID: ${id})`);
+		console.log(`[${connection.ip}] FTP client disconnected`);
 	});
 
 	ftpServer.on('server-error', (err) => {
@@ -85,7 +88,7 @@ export default function startFtpServer(db) {
 
 	ftpServer.on("login", ({ username, password, connection }, resolve, reject) => {
 		if (username === ftpconfig.user && password === ftpconfig.pass) {
-			console.log(`FTP login successful from ${username}@${connection.ip}`);
+			console.log(`[${connection.ip}] FTP login successful as "${username}"`);
 
 			let files = new Map([
 				['/', {
@@ -171,6 +174,7 @@ export default function startFtpServer(db) {
 							let dataReceived = false;
 							
 							logFtp(`[${connection.ip}] Starting upload for file: ${fileName}`);
+							console.log(`[${connection.ip}] FTP client initiated upload for file: ${fileName}`);
 							
 							let lastNoopTime = Date.now();
 							const keepAlive = () => { /* ftp-srv would close connection after IDLE_TIMEOUT, even while data is sent over the data connection */
@@ -216,6 +220,7 @@ export default function startFtpServer(db) {
 										fs.writeFileSync(path.join(uploadDirPath, filename), buffer);
 										logFtp(`[${connection.ip}] File ${fileName} saved to filesystem as ${filename}`);
 									}
+									console.log(`[${connection.ip}] FTP upload and processing successful for ${fileName}`);
 								} catch (err) {
 									logFtp(`[${connection.ip}] Error processing file ${fileName}: ${err.message}`);
 									console.error(`Error processing file: ${err.message}`);
