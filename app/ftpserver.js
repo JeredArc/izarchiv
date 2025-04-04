@@ -60,6 +60,28 @@ export default function startFtpServer(db) {
 		logFtp(`Client disconnected ${connection.ip} (ID: ${id})`);
 	});
 
+	ftpServer.on('server-error', (err) => {
+		logFtp(`FTP server error: ${JSON.stringify(err)}`);
+	});
+
+	ftpServer.on('client-error', (err) => {
+		logFtp(`FTP client error: ${JSON.stringify(err)}`);
+	});
+
+	ftpServer.on('RNTO', (err, fileName) => {
+		logFtp(`RNTO: ${err} ${fileName}`);
+	});
+
+	ftpServer.on('STOR', (err, fileName) => {
+		logFtp(`STOR: ${err} ${fileName}`);
+	});
+
+	ftpServer.on('RETR', (err, filePath) => {
+		logFtp(`RETR: ${err} ${filePath}`);
+	});
+
+
+
 	ftpServer.on("login", ({ username, password, connection }, resolve, reject) => {
 		if (username === ftpconfig.user && password === ftpconfig.pass) {
 			console.log(`FTP login successful from ${connection.ip}`);
