@@ -13,6 +13,7 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; /* 50MB limit */
 const IDLE_TIMEOUT = 30000; // 30 seconds
 const NOOP_INTERVAL = 10000; // 60 seconds
 const FTP_LOG_FILE = 'ftp.log';
+const FTP_LOG_TO_CONSOLE = true;
 
 export default function startFtpServer(db) {
 	// Create a write stream for FTP logging
@@ -20,7 +21,8 @@ export default function startFtpServer(db) {
 	
 	function logFtp(message) {
 		if(!ftpLogStream) return;
-		const timestamp = new Date().toISOString();
+		const timestamp = new Date().toISOString().replace('T', ' ');
+		if(FTP_LOG_TO_CONSOLE) console.log(`[FTP] ${timestamp} ${message}`);
 		ftpLogStream.write(`${timestamp} ${message}\n`);
 	}
 
